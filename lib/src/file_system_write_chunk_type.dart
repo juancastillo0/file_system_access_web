@@ -10,9 +10,6 @@ abstract class FileSystemWriteChunkType {
   const factory FileSystemWriteChunkType.bufferSource(
     ByteBuffer value,
   ) = _BufferSource;
-  const factory FileSystemWriteChunkType.blob(
-    dynamic /*html.Blob*/ value,
-  ) = _Blob;
   const factory FileSystemWriteChunkType.string(
     String value,
   ) = _String;
@@ -24,13 +21,11 @@ abstract class FileSystemWriteChunkType {
 
   T when<T>({
     required T Function(ByteBuffer value) bufferSource,
-    required T Function(dynamic /*html.Blob*/ value) blob,
     required T Function(String value) string,
     required T Function(WriteParams value) writeParams,
   }) {
     final FileSystemWriteChunkType v = this;
     if (v is _BufferSource) return bufferSource(v.value);
-    if (v is _Blob) return blob(v.value);
     if (v is _String) return string(v.value);
     if (v is _WriteParams) return writeParams(v.value);
     throw "";
@@ -39,14 +34,12 @@ abstract class FileSystemWriteChunkType {
   T? maybeWhen<T>({
     T Function()? orElse,
     T Function(ByteBuffer value)? bufferSource,
-    T Function(dynamic /*html.Blob*/ value)? blob,
     T Function(String value)? string,
     T Function(WriteParams value)? writeParams,
   }) {
     final FileSystemWriteChunkType v = this;
     if (v is _BufferSource)
       return bufferSource != null ? bufferSource(v.value) : orElse?.call();
-    if (v is _Blob) return blob != null ? blob(v.value) : orElse?.call();
     if (v is _String) return string != null ? string(v.value) : orElse?.call();
     if (v is _WriteParams)
       return writeParams != null ? writeParams(v.value) : orElse?.call();
@@ -55,13 +48,11 @@ abstract class FileSystemWriteChunkType {
 
   T map<T>({
     required T Function(_BufferSource value) bufferSource,
-    required T Function(_Blob value) blob,
     required T Function(_String value) string,
     required T Function(_WriteParams value) writeParams,
   }) {
     final FileSystemWriteChunkType v = this;
     if (v is _BufferSource) return bufferSource(v);
-    if (v is _Blob) return blob(v);
     if (v is _String) return string(v);
     if (v is _WriteParams) return writeParams(v);
     throw "";
@@ -70,14 +61,13 @@ abstract class FileSystemWriteChunkType {
   T? maybeMap<T>({
     T Function()? orElse,
     T Function(_BufferSource value)? bufferSource,
-    T Function(_Blob value)? blob,
     T Function(_String value)? string,
     T Function(_WriteParams value)? writeParams,
   }) {
     final FileSystemWriteChunkType v = this;
     if (v is _BufferSource)
       return bufferSource != null ? bufferSource(v) : orElse?.call();
-    if (v is _Blob) return blob != null ? blob(v) : orElse?.call();
+
     if (v is _String) return string != null ? string(v) : orElse?.call();
     if (v is _WriteParams)
       return writeParams != null ? writeParams(v) : orElse?.call();
@@ -90,15 +80,6 @@ class _BufferSource extends FileSystemWriteChunkType {
   final ByteBuffer value;
 
   const _BufferSource(
-    this.value,
-  ) : super._();
-}
-
-class _Blob extends FileSystemWriteChunkType {
-  @override
-  final dynamic /*html.Blob*/ value;
-
-  const _Blob(
     this.value,
   ) : super._();
 }

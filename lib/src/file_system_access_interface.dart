@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:file_selector/file_selector.dart';
+
 import 'file_system_write_chunk_type.dart';
 
 enum PermissionStateEnum { granted, denied, prompt }
@@ -58,7 +60,7 @@ abstract class FileSystemWritableFileStream {
 
 /// https://developer.mozilla.org/docs/Web/API/FileSystemFileHandle
 abstract class FileSystemFileHandle extends FileSystemHandle {
-  Future<dynamic /*html.File*/ > getFile();
+  Future<XFile /*html.File*/ > getFile();
   Future<FileSystemWritableFileStream> createWritable({bool? keepExistingData});
 }
 
@@ -69,7 +71,7 @@ abstract class FileSystemDirectoryHandle extends FileSystemHandle {
     bool? create,
   });
 
-  Future<FileSystemWritableFileStream> getDirectoryHandle(
+  Future<FileSystemDirectoryHandle> getDirectoryHandle(
     String name, {
     bool? create,
   });
@@ -86,13 +88,11 @@ abstract class FileSystemDirectoryHandle extends FileSystemHandle {
 
 abstract class FileSystem extends FileSystemI {
   const FileSystem._();
-  static const FileSystem? instance = null;
+  static FileSystem get instance => throw UnimplementedError();
 }
 
 abstract class FileSystemI {
   const FileSystemI();
-
-  Future<String?> readFileAsText(dynamic /*html.File*/ file);
 
   /// https://developer.mozilla.org/docs/Web/API/Window/showOpenFilePicker
   /// Exception AbortError

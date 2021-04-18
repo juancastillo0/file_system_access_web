@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:html' as html;
 import 'dart:js_util';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:js/js.dart';
 import 'package:file_system_access/src/file_system_write_chunk_type.dart';
 
@@ -323,7 +324,11 @@ class FileSystemFileHandleJS extends _FileSystemHandleJS
   _FileSystemFileHandle get _inner => inner as _FileSystemFileHandle;
 
   @override
-  Future<html.File> getFile() => _ptf(_inner.getFile());
+  Future<XFile> getFile() async {
+    final _file = await _ptf(_inner.getFile());
+    return _convertFileToXFile(_file);
+  }
+
   @override
   Future<FileSystemWritableFileStream> createWritable(
           {bool? keepExistingData}) =>
@@ -332,13 +337,20 @@ class FileSystemFileHandleJS extends _FileSystemHandleJS
           .then((value) => FileSystemWritableFileStreamJS(value));
 }
 
+XFile _convertFileToXFile(html.File file) => XFile(
+      html.Url.createObjectUrl(file),
+      name: file.name,
+      length: file.size,
+      lastModified: DateTime.fromMillisecondsSinceEpoch(
+          file.lastModified ?? DateTime.now().millisecondsSinceEpoch),
+    );
+
 //@class
 @JS("FileSystemDirectoryHandle")
 abstract class _FileSystemDirectoryHandle extends _FileSystemHandle {
   external _Promise<_FileSystemFileHandle> getFileHandle(String name,
       [_FileSystemGetFileOptions? options]);
-  external _Promise<_FileSystemWritableFileStream> getDirectoryHandle(
-      String name,
+  external _Promise<_FileSystemDirectoryHandle> getDirectoryHandle(String name,
       [_FileSystemGetDirectoryOptions? options]);
   external _Promise<void> removeEntry(String name,
       [_FileSystemRemoveOptions? options]);
@@ -368,11 +380,11 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
           .then((value) => FileSystemFileHandleJS(value));
 
   @override
-  Future<FileSystemWritableFileStream> getDirectoryHandle(String name,
+  Future<FileSystemDirectoryHandle> getDirectoryHandle(String name,
           {bool? create}) =>
       _ptf(_inner.getDirectoryHandle(
               name, _FileSystemGetDirectoryOptions(create: create)))
-          .then((value) => FileSystemWritableFileStreamJS(value));
+          .then((value) => FileSystemDirectoryHandleJS(value));
 
   @override
   Future<void> removeEntry(String name, {bool? recursive}) => _ptf(
@@ -413,38 +425,38 @@ class FileSystem extends FileSystemI {
 
   static const FileSystem instance = FileSystem._();
 
-  @override
-  Future<String?> readFileAsText(dynamic file) {
-    final reader = html.FileReader();
-    final completer = Completer<String?>();
-    void _c(String? v) => !completer.isCompleted ? completer.complete(v) : null;
+  // @override
+  // Future<String?> readFileAsText(dynamic file) {
+  //   final reader = html.FileReader();
+  //   final completer = Completer<String?>();
+  //   void _c(String? v) => !completer.isCompleted ? completer.complete(v) : null;
 
-    reader.onLoad.listen((e) {
-      _c(reader.result as String?);
-    });
-    reader.onError.listen((event) {
-      _c(null);
-    });
-    reader.onAbort.listen((event) {
-      _c(null);
-    });
+  //   reader.onLoad.listen((e) {
+  //     _c(reader.result as String?);
+  //   });
+  //   reader.onError.listen((event) {
+  //     _c(null);
+  //   });
+  //   reader.onAbort.listen((event) {
+  //     _c(null);
+  //   });
 
-    // final reader = _JsFileReader();
-    // final completer = Completer<String>();
-    // void _c(String v) => !completer.isCompleted ? completer.complete(v) : null;
-    // reader.onload = allowInterop(() {
-    //   _c(reader.result as String);
-    // });
-    // reader.onerror = allowInterop(() {
-    //   _c(null);
-    // });
-    // reader.onabort = allowInterop(() {
-    //   _c(null);
-    // });
-    reader.readAsText(file as html.File);
+  //   // final reader = _JsFileReader();
+  //   // final completer = Completer<String>();
+  //   // void _c(String v) => !completer.isCompleted ? completer.complete(v) : null;
+  //   // reader.onload = allowInterop(() {
+  //   //   _c(reader.result as String);
+  //   // });
+  //   // reader.onerror = allowInterop(() {
+  //   //   _c(null);
+  //   // });
+  //   // reader.onabort = allowInterop(() {
+  //   //   _c(null);
+  //   // });
+  //   reader.readAsText(file as html.File);
 
-    return completer.future;
-  }
+  //   return completer.future;
+  // }
 
   @override
   Future<List<FileSystemFileHandle>> showOpenFilePicker({
