@@ -17,7 +17,7 @@ abstract class FileSystemWriteChunkType {
     WriteParams value,
   ) = _WriteParams;
 
-  dynamic get value;
+  Object get value;
 
   T when<T>({
     required T Function(ByteBuffer value) bufferSource,
@@ -31,18 +31,18 @@ abstract class FileSystemWriteChunkType {
     throw "";
   }
 
-  T? maybeWhen<T>({
-    T Function()? orElse,
+  T maybeWhen<T>({
+    required T Function() orElse,
     T Function(ByteBuffer value)? bufferSource,
     T Function(String value)? string,
     T Function(WriteParams value)? writeParams,
   }) {
     final FileSystemWriteChunkType v = this;
     if (v is _BufferSource)
-      return bufferSource != null ? bufferSource(v.value) : orElse?.call();
-    if (v is _String) return string != null ? string(v.value) : orElse?.call();
+      return bufferSource != null ? bufferSource(v.value) : orElse.call();
+    if (v is _String) return string != null ? string(v.value) : orElse.call();
     if (v is _WriteParams)
-      return writeParams != null ? writeParams(v.value) : orElse?.call();
+      return writeParams != null ? writeParams(v.value) : orElse.call();
     throw "";
   }
 
@@ -58,19 +58,19 @@ abstract class FileSystemWriteChunkType {
     throw "";
   }
 
-  T? maybeMap<T>({
-    T Function()? orElse,
+  T maybeMap<T>({
+    required T Function() orElse,
     T Function(_BufferSource value)? bufferSource,
     T Function(_String value)? string,
     T Function(_WriteParams value)? writeParams,
   }) {
     final FileSystemWriteChunkType v = this;
     if (v is _BufferSource)
-      return bufferSource != null ? bufferSource(v) : orElse?.call();
+      return bufferSource != null ? bufferSource(v) : orElse.call();
 
-    if (v is _String) return string != null ? string(v) : orElse?.call();
+    if (v is _String) return string != null ? string(v) : orElse.call();
     if (v is _WriteParams)
-      return writeParams != null ? writeParams(v) : orElse?.call();
+      return writeParams != null ? writeParams(v) : orElse.call();
     throw "";
   }
 }

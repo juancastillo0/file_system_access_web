@@ -281,20 +281,20 @@ class FileSystemWritableFileStreamJS implements FileSystemWritableFileStream {
 
   @override
   Future<void> write(FileSystemWriteChunkType data) {
-    return _ptf(inner.write(
-      data.maybeWhen(
-        writeParams: (writeParams) {
-          final map = writeParams.toJson();
-          return _WriteParams(
-            type: map["type"] as String?,
-            position: map["position"] as int?,
-            data: map["data"],
-            size: map["size"] as int?,
-          );
-        },
-        orElse: () => data.value,
-      ),
-    ));
+    final value = data.maybeWhen(
+      writeParams: (writeParams) {
+        final map = writeParams.toJson();
+        return _WriteParams(
+          type: map["type"] as String?,
+          position: map["position"] as int?,
+          data: map["data"],
+          size: map["size"] as int?,
+        );
+      },
+      orElse: () => data.value,
+    );
+    final promise = inner.write(value);
+    return _ptf(promise);
   }
 
   @override

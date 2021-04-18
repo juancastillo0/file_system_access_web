@@ -94,6 +94,12 @@ class FileSystemWritableFileStreamIo extends FileSystemWritableFileStream {
       },
     );
   }
+
+  @override
+  String toString() {
+    return "FileSystemWritableFileStreamIo(file: ${file.toString()}, "
+        "keepExistingData:$keepExistingData, sink: ${sink.toString()})";
+  }
 }
 
 class FileSystemFileHandleIo extends FileSystemHandleIo
@@ -129,6 +135,11 @@ class FileSystemFileHandleIo extends FileSystemHandleIo
     }
     return false;
   }
+
+  @override
+  String toString() {
+    return "FileSystemFileHandleIo(file: ${file.toString()})";
+  }
 }
 
 class FileSystemDirectoryHandleIo extends FileSystemHandleIo
@@ -140,7 +151,7 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
   late final uri = Uri.directory(path);
 
   @override
-  String get name => uri.pathSegments.last;
+  String get name => path;
 
   @override
   Future<FileSystemDirectoryHandleIo> getDirectoryHandle(String name,
@@ -187,6 +198,11 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
 
   @override
   final FileSystemHandleKind kind = FileSystemHandleKind.directory;
+
+  @override
+  String toString() {
+    return "FileSystemDirectoryHandleIo(path: $path)";
+  }
 }
 
 class FileSystem extends FileSystemI {
