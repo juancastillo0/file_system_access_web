@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
-import 'package:file_system_access/src/file_system_write_params.dart';
+import 'package:file_system_access/src/models/write_params.dart';
 
-export 'package:file_system_access/src/file_system_write_params.dart';
+export 'package:file_system_access/src/models/write_params.dart';
 
 abstract class FileSystemWriteChunkType {
   const FileSystemWriteChunkType._();

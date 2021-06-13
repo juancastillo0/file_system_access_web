@@ -15,30 +15,39 @@ void main() {
 
   test('open file from directory handle and append a string into the file',
       () async {
-    final directoryHandle = await FileSystem.instance.showDirectoryPicker();
+    final _directoryHandle = await FileSystem.instance.showDirectoryPicker();
+    final directoryHandle = _directoryHandle!;
     expect(directoryHandle.kind, FileSystemHandleKind.directory);
 
     const _fileName = "fileName.txt";
 
-    final fileHandle = await directoryHandle.getFileHandle(
+    final fileHandleResult = await directoryHandle.getFileHandle(
       _fileName,
       create: true,
     );
-    expect(fileHandle.name, _fileName);
+    await fileHandleResult.when(
+      ok: (fileHandle) async {
+        expect(fileHandle.name, _fileName);
 
-    final pathSegments = await directoryHandle.resolve(fileHandle);
+        final pathSegments = await directoryHandle.resolve(fileHandle);
 
-    expect(pathSegments!.length, 1);
-    expect(pathSegments.first, _fileName);
+        expect(pathSegments!.length, 1);
+        expect(pathSegments.first, _fileName);
 
-    final file = await fileHandle.getFile();
-    final content = await file.readAsString();
+        final file = await fileHandle.getFile();
+        final content = await file.readAsString();
 
-    final writable = await fileHandle.createWritable(keepExistingData: true);
+        final writable =
+            await fileHandle.createWritable(keepExistingData: true);
 
-    await writable.seek(content.length);
-    await writable
-        .write(FileSystemWriteChunkType.string("\nAPPENDED_NEW_LINE_STRING"));
-    await writable.close();
+        await writable.seek(content.length);
+        await writable.write(
+            FileSystemWriteChunkType.string("\nAPPENDED_NEW_LINE_STRING"));
+        await writable.close();
+      },
+      err: (error) async {
+        print(error);
+      },
+    );
   });
 }

@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import 'package:file_selector/file_selector.dart';
-
-import 'file_system_write_chunk_type.dart';
+import 'package:file_system_access/src/models/result.dart';
+import 'package:file_system_access/src/models/errors.dart';
+import 'package:file_system_access/src/models/write_chunk_type.dart';
 
 enum PermissionStateEnum { granted, denied, prompt }
 
@@ -66,20 +67,22 @@ abstract class FileSystemFileHandle extends FileSystemHandle {
 
 /// https://developer.mozilla.org/docs/Web/API/FileSystemDirectoryHandle
 abstract class FileSystemDirectoryHandle extends FileSystemHandle {
-  Future<FileSystemFileHandle> getFileHandle(
+  Future<Result<FileSystemFileHandle, GetHandleError>> getFileHandle(
     String name, {
     bool? create,
   });
 
-  Future<FileSystemDirectoryHandle> getDirectoryHandle(
+  Future<Result<FileSystemDirectoryHandle, GetHandleError>> getDirectoryHandle(
     String name, {
     bool? create,
   });
 
-  Future<void> removeEntry(
+  Future<Result<void, RemoveEntryError>> removeEntry(
     String name, {
     bool? recursive,
   });
+
+  Stream<FileSystemHandle> entries();
 
   Future<List<String>?> resolve(
     FileSystemHandle possibleDescendant,
@@ -102,16 +105,30 @@ abstract class FileSystemI {
     bool? multiple,
   });
 
+  /// https://developer.mozilla.org/docs/Web/API/Window/showOpenFilePicker
+  /// Exception AbortError
+  Future<FileSystemFileHandle?> showOpenSingleFilePicker({
+    List<FilePickerAcceptType>? types,
+    bool? excludeAcceptAllOption,
+  }) async {
+    final files = await showOpenFilePicker(
+      multiple: false,
+      excludeAcceptAllOption: excludeAcceptAllOption,
+      types: types,
+    );
+    return files.isEmpty ? null : files[0];
+  }
+
   /// https://developer.mozilla.org/docs/Web/API/Window/showSaveFilePicker
   /// Exception AbortError
-  Future<FileSystemFileHandle> showSaveFilePicker({
+  Future<FileSystemFileHandle?> showSaveFilePicker({
     List<FilePickerAcceptType>? types,
     bool? excludeAcceptAllOption,
   });
 
   /// https://developer.mozilla.org/docs/Web/API/Window/showDirectoryPicker
   /// Exception AbortError
-  Future<FileSystemDirectoryHandle> showDirectoryPicker();
+  Future<FileSystemDirectoryHandle?> showDirectoryPicker();
 
   /// Utility function for querying and requesting permission if it hasn't been granted
   Future<bool> verifyPermission(

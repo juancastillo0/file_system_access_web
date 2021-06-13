@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:file_system_access/file_system_access.dart';
+import 'package:file_system_access/src/models/result.dart';
 
 abstract class FileSystemHandleIo extends FileSystemHandle {
   @override
@@ -112,8 +113,9 @@ class FileSystemFileHandleIo extends FileSystemHandleIo
   String get name => file.name;
 
   @override
-  Future<FileSystemWritableFileStream> createWritable(
-      {bool? keepExistingData}) async {
+  Future<FileSystemWritableFileStream> createWritable({
+    bool? keepExistingData,
+  }) async {
     return FileSystemWritableFileStreamIo.fromFile(
       File(file.path),
       keepExistingData: keepExistingData ?? false,
@@ -154,22 +156,119 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
   String get name => path;
 
   @override
-  Future<FileSystemDirectoryHandleIo> getDirectoryHandle(String name,
-      {bool? create}) async {
-    return FileSystemDirectoryHandleIo(joinName(name));
+  Future<Result<FileSystemDirectoryHandle, GetHandleError>> getDirectoryHandle(
+    String name, {
+    bool? create,
+  }) async {
+    final concatName = joinName(name);
+    final type = await FileSystemEntity.type(concatName);
+
+    if (type == FileSystemEntityType.directory) {
+      return Ok(FileSystemDirectoryHandleIo(concatName));
+    } else if (type == FileSystemEntityType.notFound) {
+      if (create == true) {
+        try {
+          await Directory(concatName).create(recursive: true);
+        } catch (error, stack) {
+          return Err(
+            GetHandleError(
+              type: GetHandleErrorType.TypeError,
+              rawError: error,
+              rawStack: stack,
+            ),
+          );
+        }
+        return Ok(FileSystemDirectoryHandleIo(concatName));
+      } else {
+        return Err(GetHandleError(type: GetHandleErrorType.NotFoundError));
+      }
+    } else {
+      return Err(GetHandleError(type: GetHandleErrorType.TypeMismatchError));
+    }
   }
 
   @override
-  Future<FileSystemFileHandle> getFileHandle(String name,
-      {bool? create}) async {
-    final file = XFile(joinName(name));
-    return FileSystemFileHandleIo(file);
+  Future<Result<FileSystemFileHandle, GetHandleError>> getFileHandle(
+    String name, {
+    bool? create,
+  }) async {
+    final concatName = joinName(name);
+    final type = await FileSystemEntity.type(concatName);
+
+    if (type == FileSystemEntityType.file) {
+      final file = XFile(concatName);
+      return Ok(FileSystemFileHandleIo(file));
+    } else if (type == FileSystemEntityType.notFound) {
+      if (create == true) {
+        try {
+          await File(concatName).create();
+        } catch (error, stack) {
+          return Err(
+            GetHandleError(
+              type: GetHandleErrorType.TypeError,
+              rawError: error,
+              rawStack: stack,
+            ),
+          );
+        }
+        final file = XFile(concatName);
+        return Ok(FileSystemFileHandleIo(file));
+      } else {
+        return Err(GetHandleError(type: GetHandleErrorType.NotFoundError));
+      }
+    } else {
+      return Err(GetHandleError(type: GetHandleErrorType.TypeMismatchError));
+    }
   }
 
   @override
-  Future<void> removeEntry(String name, {bool? recursive}) async {
-    await File(joinName(name)).delete(recursive: recursive ?? false);
-    return;
+  Future<Result<void, RemoveEntryError>> removeEntry(
+    String name, {
+    bool? recursive,
+  }) async {
+    final concatName = joinName(name);
+    final type = await FileSystemEntity.type(concatName);
+
+    late final FileSystemEntity entity;
+    switch (type) {
+      case FileSystemEntityType.notFound:
+        return Err(RemoveEntryError(type: RemoveEntryErrorType.NotFoundError));
+      case FileSystemEntityType.file:
+        entity = File(concatName);
+        break;
+      case FileSystemEntityType.directory:
+        final dir = Directory(concatName);
+        if (recursive != true) {
+          final isEmpty = await dir.list().isEmpty;
+          if (!isEmpty) {
+            return Err(RemoveEntryError(
+              type: RemoveEntryErrorType.InvalidModificationError,
+            ));
+          }
+        }
+        entity = dir;
+        break;
+      case FileSystemEntityType.link:
+        entity = Link(concatName);
+        break;
+    }
+    await entity.delete(recursive: recursive ?? false);
+    return Ok(null);
+  }
+
+  @override
+  Stream<FileSystemHandle> entries() {
+    final dir = Directory(path);
+    return dir.list().map((event) {
+      if (event is File) {
+        final file = XFile(event.path);
+        return FileSystemFileHandleIo(file);
+      } else if (event is Directory) {
+        return FileSystemDirectoryHandleIo(event.path);
+      } else {
+        throw Error();
+      }
+    });
   }
 
   @override
@@ -211,24 +310,27 @@ class FileSystem extends FileSystemI {
   static const FileSystem instance = FileSystem._();
 
   @override
-  Future<FileSystemDirectoryHandle> showDirectoryPicker() async {
+  Future<FileSystemDirectoryHandle?> showDirectoryPicker() async {
     final path = await FileSelectorPlatform.instance.getDirectoryPath();
-    return FileSystemDirectoryHandleIo(path!);
+    return path != null ? FileSystemDirectoryHandleIo(path) : null;
   }
 
   @override
-  Future<List<FileSystemFileHandle>> showOpenFilePicker(
-      {List<FilePickerAcceptType>? types,
-      bool? excludeAcceptAllOption,
-      bool? multiple}) async {
+  Future<List<FileSystemFileHandle>> showOpenFilePicker({
+    List<FilePickerAcceptType>? types,
+    bool? excludeAcceptAllOption,
+    bool? multiple,
+  }) async {
     final files = await FileSelectorPlatform.instance.openFiles();
     return files.map((file) => FileSystemFileHandleIo(file)).toList();
   }
 
   @override
-  Future<FileSystemFileHandle> showSaveFilePicker(
-      {List<FilePickerAcceptType>? types, bool? excludeAcceptAllOption}) async {
+  Future<FileSystemFileHandle?> showSaveFilePicker({
+    List<FilePickerAcceptType>? types,
+    bool? excludeAcceptAllOption,
+  }) async {
     final file = await FileSelectorPlatform.instance.openFile();
-    return FileSystemFileHandleIo(file!);
+    return file != null ? FileSystemFileHandleIo(file) : null;
   }
 }

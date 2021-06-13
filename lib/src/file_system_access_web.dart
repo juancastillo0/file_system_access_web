@@ -9,14 +9,14 @@ library file_system_access;
 import 'dart:async';
 import 'dart:html' as html;
 import 'dart:js_util';
+import 'package:file_system_access/src/utils.dart';
+import 'package:js/js.dart';
 
 import 'package:file_selector/file_selector.dart';
-import 'package:js/js.dart';
-import 'package:file_system_access/src/file_system_write_chunk_type.dart';
-
-import 'file_system_access_interface.dart';
-
-export 'package:file_system_access/src/file_system_write_chunk_type.dart';
+import 'package:file_system_access/file_system_access.dart';
+import 'package:file_system_access/src/models/result.dart';
+import 'package:file_system_access/src/models/write_chunk_type.dart';
+import 'package:file_system_access/src/file_system_access_interface.dart';
 
 // @JS()
 // @anonymous
@@ -61,15 +61,6 @@ export 'package:file_system_access/src/file_system_write_chunk_type.dart';
 //   external void readAsDataUrl(JsBlob blob);
 //   external void readAsText(JsBlob blob);
 // }
-
-T? parseEnum<T>(String raw, List<T> enumValues) {
-  for (final value in enumValues) {
-    if (value.toString().split(".")[1] == raw) {
-      return value;
-    }
-  }
-  return null;
-}
 
 @JS()
 @anonymous
@@ -251,6 +242,19 @@ class _WriteParams {
   external int? get size;
 }
 
+@JS()
+@anonymous
+class _Iterator<T> {
+  external T next();
+}
+
+@JS()
+@anonymous
+class _IteratorValue<T> {
+  external bool get done;
+  external T? get value;
+}
+
 // type WriteParams =
 //     | { type: 'write'; position?: number; data: BufferSource | Blob | string }
 //     | { type: 'seek'; position: number }
@@ -356,6 +360,10 @@ abstract class _FileSystemDirectoryHandle extends _FileSystemHandle {
       [_FileSystemRemoveOptions? options]);
   external _Promise<List<String>?> resolve(FileSystemHandle possibleDescendant);
 
+  // external dynamic keys();
+  external _Iterator<_Promise<_IteratorValue<_FileSystemHandle>>> values();
+  // external _Iterator<_Promise<_IteratorValue<List>>> entries();
+
   // AsyncIterableIterator<string> keys();
   // AsyncIterableIterator<FileSystemHandle> values();
   // AsyncIterableIterator<[string, FileSystemHandle]> entries();
@@ -367,6 +375,32 @@ abstract class _FileSystemDirectoryHandle extends _FileSystemHandle {
   // static getSystemDirectory(options: GetSystemDirectoryOptions): Promise<FileSystemDirectoryHandle>;
 }
 
+GetHandleError _mapGetHandleError(Object error, StackTrace stack) {
+  GetHandleErrorType type = GetHandleErrorType.TypeError;
+  if (error is html.DomException) {
+    type = GetHandleError.typeFromString(error.name) ?? type;
+  }
+
+  return GetHandleError(
+    type: type,
+    rawError: error,
+    rawStack: stack,
+  );
+}
+
+RemoveEntryError _mapRemoveEntryError(Object error, StackTrace stack) {
+  RemoveEntryErrorType type = RemoveEntryErrorType.TypeError;
+  if (error is html.DomException) {
+    type = RemoveEntryError.typeFromString(error.name) ?? type;
+  }
+
+  return RemoveEntryError(
+    type: type,
+    rawError: error,
+    rawStack: stack,
+  );
+}
+
 class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
     implements FileSystemDirectoryHandle {
   const FileSystemDirectoryHandleJS(_FileSystemDirectoryHandle inner)
@@ -374,21 +408,97 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
   _FileSystemDirectoryHandle get _inner => inner as _FileSystemDirectoryHandle;
 
   @override
-  Future<FileSystemFileHandle> getFileHandle(String name, {bool? create}) =>
-      _ptf(_inner.getFileHandle(
-              name, _FileSystemGetFileOptions(create: create)))
-          .then((value) => FileSystemFileHandleJS(value));
+  Future<Result<FileSystemFileHandle, GetHandleError>> getFileHandle(
+    String name, {
+    bool? create,
+  }) async {
+    try {
+      final value = await _ptf(
+        _inner.getFileHandle(name, _FileSystemGetFileOptions(create: create)),
+      );
+      return Ok(FileSystemFileHandleJS(value));
+    } catch (error, stack) {
+      return Err(_mapGetHandleError(error, stack));
+    }
+  }
 
   @override
-  Future<FileSystemDirectoryHandle> getDirectoryHandle(String name,
-          {bool? create}) =>
-      _ptf(_inner.getDirectoryHandle(
-              name, _FileSystemGetDirectoryOptions(create: create)))
-          .then((value) => FileSystemDirectoryHandleJS(value));
+  Future<Result<FileSystemDirectoryHandle, GetHandleError>> getDirectoryHandle(
+    String name, {
+    bool? create,
+  }) async {
+    try {
+      final value = await _ptf(
+        _inner.getDirectoryHandle(
+            name, _FileSystemGetDirectoryOptions(create: create)),
+      );
+      return Ok(FileSystemDirectoryHandleJS(value));
+    } catch (error, stack) {
+      return Err(_mapGetHandleError(error, stack));
+    }
+  }
 
   @override
-  Future<void> removeEntry(String name, {bool? recursive}) => _ptf(
-      _inner.removeEntry(name, _FileSystemRemoveOptions(recursive: recursive)));
+  Stream<FileSystemHandle> entries() {
+    final entriesIterator = _inner.values();
+
+    late final StreamController<FileSystemHandle> controller;
+    int listening = 0;
+    bool inLoop = false;
+
+    Future<void> _loop() async {
+      if (inLoop) {
+        return;
+      }
+      inLoop = true;
+      while (!controller.isClosed && listening > 0) {
+        final entry = await _ptf(entriesIterator.next());
+        final handle = entry.value;
+        if (handle != null) {
+          final _entry = handle.kind == 'directory'
+              ? FileSystemDirectoryHandleJS(
+                  handle as _FileSystemDirectoryHandle)
+              : FileSystemFileHandleJS(handle as _FileSystemFileHandle);
+          controller.add(_entry);
+        }
+        if (entry.done) {
+          await controller.close();
+        }
+      }
+      inLoop = false;
+    }
+
+    controller = StreamController(
+      onPause: () {
+        listening--;
+      },
+      onResume: () {
+        listening++;
+        _loop();
+      },
+      onListen: () {
+        listening++;
+        _loop();
+      },
+      onCancel: () {
+        listening--;
+      },
+    );
+
+    return controller.stream;
+  }
+
+  @override
+  Future<Result<void, RemoveEntryError>> removeEntry(String name,
+      {bool? recursive}) {
+    return _ptf(
+      _inner.removeEntry(name, _FileSystemRemoveOptions(recursive: recursive)),
+    )
+        .then<Result<void, RemoveEntryError>>((value) => Ok(value))
+        .catchError((error, stack) {
+      return Err(_mapRemoveEntryError(error, stack));
+    });
+  }
 
   @override
   Future<List<String>?> resolve(FileSystemHandle possibleDescendant) =>
@@ -469,13 +579,20 @@ class FileSystem extends FileSystemI {
       excludeAcceptAllOption: excludeAcceptAllOption,
       types: _mapFilePickerTypes(types) ?? [],
     ));
-    return _pltf(_promise).then(
+    return _pltf(_promise)
+        .then<List<FileSystemFileHandle>>(
       (value) => value.map((e) => FileSystemFileHandleJS(e)).toList(),
-    );
+    ) // TODO: distinguish AbortError from others (for example, unsupported)
+        .catchError((error) {
+      if (error is html.DomException && html.DomException.ABORT == error.name) {
+        return <FileSystemFileHandle>[];
+      }
+      throw error;
+    });
   }
 
   @override
-  Future<FileSystemFileHandle> showSaveFilePicker({
+  Future<FileSystemFileHandle?> showSaveFilePicker({
     List<FilePickerAcceptType>? types,
     bool? excludeAcceptAllOption,
   }) =>
@@ -484,12 +601,29 @@ class FileSystem extends FileSystemI {
           excludeAcceptAllOption: excludeAcceptAllOption,
           types: _mapFilePickerTypes(types) ?? [],
         )),
-      ).then((value) => FileSystemFileHandleJS(value));
+      ).then<FileSystemFileHandle?>((value) => FileSystemFileHandleJS(value))
+          // TODO: distinguish AbortError from others (for example, unsupported)
+          .catchError((error) {
+        if (error is html.DomException &&
+            html.DomException.ABORT == error.name) {
+          return null;
+        }
+        throw error;
+      });
 
   @override
-  Future<FileSystemDirectoryHandle> showDirectoryPicker() =>
+  Future<FileSystemDirectoryHandle?> showDirectoryPicker() =>
       _ptf(_showDirectoryPicker())
-          .then((value) => FileSystemDirectoryHandleJS(value));
+          .then<FileSystemDirectoryHandle?>(
+              (value) => FileSystemDirectoryHandleJS(value))
+          // TODO: distinguish AbortError from others (for example, unsupported)
+          .catchError((error) {
+        if (error is html.DomException &&
+            html.DomException.ABORT == error.name) {
+          return null;
+        }
+        throw error;
+      });
 }
 
 List<_FilePickerAcceptTypeJS>? _mapFilePickerTypes(

@@ -1,4 +1,4 @@
-import 'package:file_system_access/src/file_system_write_chunk_type.dart';
+import 'package:file_system_access/src/models/write_chunk_type.dart';
 
 abstract class WriteParams {
   const WriteParams._();
