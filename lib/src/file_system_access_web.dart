@@ -111,8 +111,9 @@ abstract class _FileSystemHandleJS implements FileSystemHandle {
   String get name => inner.name;
 
   @override
-  Future<PermissionStateEnum> queryPermission(
-          {FileSystemPermissionMode? mode}) =>
+  Future<PermissionStateEnum> queryPermission({
+    FileSystemPermissionMode? mode,
+  }) =>
       _ptf(inner.queryPermission(
         _FileSystemHandlePermissionDescriptor(
           mode: mode == null ? null : mode.toString().split(".")[1],
@@ -120,8 +121,9 @@ abstract class _FileSystemHandleJS implements FileSystemHandle {
       )).then((value) => parseEnum(value, PermissionStateEnum.values)!);
 
   @override
-  Future<PermissionStateEnum> requestPermission(
-          {FileSystemPermissionMode? mode}) =>
+  Future<PermissionStateEnum> requestPermission({
+    FileSystemPermissionMode? mode,
+  }) =>
       _ptf(inner.requestPermission(
         _FileSystemHandlePermissionDescriptor(
           mode: mode == null ? null : mode.toString().split(".")[1],
@@ -334,8 +336,9 @@ class FileSystemFileHandleJS extends _FileSystemHandleJS
   }
 
   @override
-  Future<FileSystemWritableFileStream> createWritable(
-          {bool? keepExistingData}) =>
+  Future<FileSystemWritableFileStream> createWritable({
+    bool? keepExistingData,
+  }) =>
       _ptf(_inner.createWritable(_FileSystemCreateWritableOptions(
               keepExistingData: keepExistingData)))
           .then((value) => FileSystemWritableFileStreamJS(value));
@@ -346,7 +349,8 @@ XFile _convertFileToXFile(html.File file) => XFile(
       name: file.name,
       length: file.size,
       lastModified: DateTime.fromMillisecondsSinceEpoch(
-          file.lastModified ?? DateTime.now().millisecondsSinceEpoch),
+        file.lastModified ?? DateTime.now().millisecondsSinceEpoch,
+      ),
     );
 
 //@class
@@ -414,7 +418,10 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
   }) async {
     try {
       final value = await _ptf(
-        _inner.getFileHandle(name, _FileSystemGetFileOptions(create: create)),
+        _inner.getFileHandle(
+          name,
+          _FileSystemGetFileOptions(create: create),
+        ),
       );
       return Ok(FileSystemFileHandleJS(value));
     } catch (error, stack) {
@@ -430,7 +437,9 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
     try {
       final value = await _ptf(
         _inner.getDirectoryHandle(
-            name, _FileSystemGetDirectoryOptions(create: create)),
+          name,
+          _FileSystemGetDirectoryOptions(create: create),
+        ),
       );
       return Ok(FileSystemDirectoryHandleJS(value));
     } catch (error, stack) {
@@ -489,8 +498,10 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
   }
 
   @override
-  Future<Result<void, RemoveEntryError>> removeEntry(String name,
-      {bool? recursive}) {
+  Future<Result<void, RemoveEntryError>> removeEntry(
+    String name, {
+    bool? recursive,
+  }) {
     return _ptf(
       _inner.removeEntry(name, _FileSystemRemoveOptions(recursive: recursive)),
     )
@@ -534,6 +545,8 @@ class FileSystem extends FileSystemI {
   const FileSystem._();
 
   static const FileSystem instance = FileSystem._();
+
+  bool get isSupported => hasProperty(html.window, 'showOpenFilePicker');
 
   // @override
   // Future<String?> readFileAsText(dynamic file) {

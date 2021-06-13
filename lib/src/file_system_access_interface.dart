@@ -61,7 +61,10 @@ abstract class FileSystemWritableFileStream {
 
 /// https://developer.mozilla.org/docs/Web/API/FileSystemFileHandle
 abstract class FileSystemFileHandle extends FileSystemHandle {
+  /// throws NotAllowedError if FileSystemPermissionMode.read is not granted
   Future<XFile /*html.File*/ > getFile();
+
+  /// throws NotAllowedError if FileSystemPermissionMode.readwrite is not granted
   Future<FileSystemWritableFileStream> createWritable({bool? keepExistingData});
 }
 
@@ -82,6 +85,7 @@ abstract class FileSystemDirectoryHandle extends FileSystemHandle {
     bool? recursive,
   });
 
+  /// throws NotAllowedError if FileSystemPermissionMode.read is not granted
   Stream<FileSystemHandle> entries();
 
   Future<List<String>?> resolve(
@@ -96,6 +100,8 @@ abstract class FileSystem extends FileSystemI {
 
 abstract class FileSystemI {
   const FileSystemI();
+
+  bool get isSupported;
 
   /// https://developer.mozilla.org/docs/Web/API/Window/showOpenFilePicker
   /// Exception AbortError

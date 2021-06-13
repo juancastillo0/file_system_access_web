@@ -1,3 +1,9 @@
+class ResultException<ERR> {
+  final ERR error;
+
+  const ResultException(this.error);
+}
+
 abstract class Result<OK, ERR> {
   const Result._();
 
@@ -10,6 +16,11 @@ abstract class Result<OK, ERR> {
 
   OK? get okOrNull => when(ok: (ok) => ok, err: (_) => null);
   ERR? get errOrNull => when(ok: (ok) => null, err: (err) => err);
+
+  OK unwrap() => when(
+        ok: (ok) => ok,
+        err: (err) => throw ResultException(err),
+      );
 
   T? whenOk<T>(T Function(OK) func) {
     return when(

@@ -309,6 +309,8 @@ class FileSystem extends FileSystemI {
 
   static const FileSystem instance = FileSystem._();
 
+  final bool isSupported = true;
+
   @override
   Future<FileSystemDirectoryHandle?> showDirectoryPicker() async {
     final path = await FileSelectorPlatform.instance.getDirectoryPath();
