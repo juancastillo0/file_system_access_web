@@ -163,27 +163,25 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
     final concatName = joinName(name);
     final type = await FileSystemEntity.type(concatName);
 
+    final _makeError = GetHandleError.errorMaker(this, name);
+
     if (type == FileSystemEntityType.directory) {
       return Ok(FileSystemDirectoryHandleIo(concatName));
     } else if (type == FileSystemEntityType.notFound) {
       if (create == true) {
         try {
           await Directory(concatName).create(recursive: true);
+          return Ok(FileSystemDirectoryHandleIo(concatName));
         } catch (error, stack) {
           return Err(
-            GetHandleError(
-              type: GetHandleErrorType.TypeError,
-              rawError: error,
-              rawStack: stack,
-            ),
+            _makeError(GetHandleErrorType.TypeError, error, stack),
           );
         }
-        return Ok(FileSystemDirectoryHandleIo(concatName));
       } else {
-        return Err(GetHandleError(type: GetHandleErrorType.NotFoundError));
+        return Err(_makeError(GetHandleErrorType.NotFoundError));
       }
     } else {
-      return Err(GetHandleError(type: GetHandleErrorType.TypeMismatchError));
+      return Err(_makeError(GetHandleErrorType.TypeMismatchError));
     }
   }
 
@@ -195,6 +193,8 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
     final concatName = joinName(name);
     final type = await FileSystemEntity.type(concatName);
 
+    final _makeError = GetHandleError.errorMaker(this, name);
+
     if (type == FileSystemEntityType.file) {
       final file = XFile(concatName);
       return Ok(FileSystemFileHandleIo(file));
@@ -202,22 +202,16 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
       if (create == true) {
         try {
           await File(concatName).create();
+          final file = XFile(concatName);
+          return Ok(FileSystemFileHandleIo(file));
         } catch (error, stack) {
-          return Err(
-            GetHandleError(
-              type: GetHandleErrorType.TypeError,
-              rawError: error,
-              rawStack: stack,
-            ),
-          );
+          return Err(_makeError(GetHandleErrorType.TypeError, error, stack));
         }
-        final file = XFile(concatName);
-        return Ok(FileSystemFileHandleIo(file));
       } else {
-        return Err(GetHandleError(type: GetHandleErrorType.NotFoundError));
+        return Err(_makeError(GetHandleErrorType.NotFoundError));
       }
     } else {
-      return Err(GetHandleError(type: GetHandleErrorType.TypeMismatchError));
+      return Err(_makeError(GetHandleErrorType.TypeMismatchError));
     }
   }
 
@@ -229,10 +223,12 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
     final concatName = joinName(name);
     final type = await FileSystemEntity.type(concatName);
 
+    final _makeError = RemoveEntryError.errorMaker(this, name);
+
     late final FileSystemEntity entity;
     switch (type) {
       case FileSystemEntityType.notFound:
-        return Err(RemoveEntryError(type: RemoveEntryErrorType.NotFoundError));
+        return Err(_makeError(RemoveEntryErrorType.NotFoundError));
       case FileSystemEntityType.file:
         entity = File(concatName);
         break;
@@ -241,8 +237,8 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
         if (recursive != true) {
           final isEmpty = await dir.list().isEmpty;
           if (!isEmpty) {
-            return Err(RemoveEntryError(
-              type: RemoveEntryErrorType.InvalidModificationError,
+            return Err(_makeError(
+              RemoveEntryErrorType.InvalidModificationError,
             ));
           }
         }

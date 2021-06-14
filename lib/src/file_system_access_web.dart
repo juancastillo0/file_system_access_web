@@ -379,7 +379,12 @@ abstract class _FileSystemDirectoryHandle extends _FileSystemHandle {
   // static getSystemDirectory(options: GetSystemDirectoryOptions): Promise<FileSystemDirectoryHandle>;
 }
 
-GetHandleError _mapGetHandleError(Object error, StackTrace stack) {
+GetHandleError _mapGetHandleError(
+  FileSystemDirectoryHandle handle,
+  String name,
+  Object error,
+  StackTrace stack,
+) {
   GetHandleErrorType type = GetHandleErrorType.TypeError;
   if (error is html.DomException) {
     type = GetHandleError.typeFromString(error.name) ?? type;
@@ -389,10 +394,17 @@ GetHandleError _mapGetHandleError(Object error, StackTrace stack) {
     type: type,
     rawError: error,
     rawStack: stack,
+    handle: handle,
+    name: name,
   );
 }
 
-RemoveEntryError _mapRemoveEntryError(Object error, StackTrace stack) {
+RemoveEntryError _mapRemoveEntryError(
+  FileSystemDirectoryHandle handle,
+  String name,
+  Object error,
+  StackTrace stack,
+) {
   RemoveEntryErrorType type = RemoveEntryErrorType.TypeError;
   if (error is html.DomException) {
     type = RemoveEntryError.typeFromString(error.name) ?? type;
@@ -402,6 +414,8 @@ RemoveEntryError _mapRemoveEntryError(Object error, StackTrace stack) {
     type: type,
     rawError: error,
     rawStack: stack,
+    handle: handle,
+    name: name,
   );
 }
 
@@ -425,7 +439,7 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
       );
       return Ok(FileSystemFileHandleJS(value));
     } catch (error, stack) {
-      return Err(_mapGetHandleError(error, stack));
+      return Err(_mapGetHandleError(this, name, error, stack));
     }
   }
 
@@ -443,7 +457,7 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
       );
       return Ok(FileSystemDirectoryHandleJS(value));
     } catch (error, stack) {
-      return Err(_mapGetHandleError(error, stack));
+      return Err(_mapGetHandleError(this, name, error, stack));
     }
   }
 
@@ -507,7 +521,7 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
     )
         .then<Result<void, RemoveEntryError>>((value) => Ok(value))
         .catchError((error, stack) {
-      return Err(_mapRemoveEntryError(error, stack));
+      return Err(_mapRemoveEntryError(this, name, error, stack));
     });
   }
 

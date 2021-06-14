@@ -1,3 +1,4 @@
+import 'package:file_system_access/file_system_access.dart';
 import 'package:file_system_access/src/utils.dart';
 
 enum BaseFileErrorType {
@@ -9,11 +10,15 @@ class BaseFileError {
   final BaseFileErrorType type;
   final Object? rawError;
   final StackTrace? rawStack;
+  final String name;
+  final FileSystemDirectoryHandle handle;
 
   const BaseFileError({
     required this.type,
     this.rawError,
     this.rawStack,
+    required this.name,
+    required this.handle,
   });
 
   static BaseFileErrorType? typeFromString(String raw) {
@@ -31,6 +36,8 @@ class BaseFileError {
           : BaseFileErrorType.TypeError,
       rawError: err.rawError,
       rawStack: err.rawStack,
+      handle: err.handle,
+      name: err.name,
     );
   }
 
@@ -45,6 +52,8 @@ class BaseFileError {
           : BaseFileErrorType.TypeError,
       rawError: err.rawError,
       rawStack: err.rawStack,
+      handle: err.handle,
+      name: err.name,
     );
   }
 
@@ -66,12 +75,38 @@ class GetHandleError {
   final GetHandleErrorType type;
   final Object? rawError;
   final StackTrace? rawStack;
+  final String name;
+  final FileSystemDirectoryHandle handle;
 
   const GetHandleError({
     required this.type,
     this.rawError,
     this.rawStack,
+    required this.name,
+    required this.handle,
   });
+
+  static GetHandleError Function(
+    GetHandleErrorType type, [
+    Object? error,
+    StackTrace? stack,
+  ]) errorMaker(FileSystemDirectoryHandle handle, String name) {
+    GetHandleError _makeError(
+      GetHandleErrorType type, [
+      Object? error,
+      StackTrace? stack,
+    ]) {
+      return GetHandleError(
+        type: type,
+        handle: handle,
+        name: name,
+        rawError: error,
+        rawStack: stack,
+      );
+    }
+
+    return _makeError;
+  }
 
   static GetHandleErrorType? typeFromString(String raw) {
     return parseEnum(raw, GetHandleErrorType.values);
@@ -95,12 +130,38 @@ class RemoveEntryError {
   final RemoveEntryErrorType type;
   final Object? rawError;
   final StackTrace? rawStack;
+  final String name;
+  final FileSystemDirectoryHandle handle;
 
   const RemoveEntryError({
     required this.type,
     this.rawError,
     this.rawStack,
+    required this.name,
+    required this.handle,
   });
+
+  static RemoveEntryError Function(
+    RemoveEntryErrorType type, [
+    Object? error,
+    StackTrace? stack,
+  ]) errorMaker(FileSystemDirectoryHandle handle, String name) {
+    RemoveEntryError _makeError(
+      RemoveEntryErrorType type, [
+      Object? error,
+      StackTrace? stack,
+    ]) {
+      return RemoveEntryError(
+        type: type,
+        handle: handle,
+        name: name,
+        rawError: error,
+        rawStack: stack,
+      );
+    }
+
+    return _makeError;
+  }
 
   static RemoveEntryErrorType? typeFromString(String raw) {
     return parseEnum(raw, RemoveEntryErrorType.values);
