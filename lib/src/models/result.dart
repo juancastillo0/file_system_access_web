@@ -95,14 +95,14 @@ abstract class Result<OK, ERR> {
 
   TypeResult get typeEnum;
 
-  Result<_T, ERR> mapGenericOK<_T>(_T Function(OK) mapper) {
+  Result<_T, ERR> mapOk<_T>(_T Function(OK) mapper) {
     return map(
       ok: (v) => Result.ok(mapper(v.value)),
       err: (v) => Result.err(v.error),
     );
   }
 
-  Result<OK, _T> mapGenericERR<_T>(_T Function(ERR) mapper) {
+  Result<OK, _T> mapErr<_T>(_T Function(ERR) mapper) {
     return map(
       ok: (v) => Result.ok(v.value),
       err: (v) => Result.err(mapper(v.error)),
