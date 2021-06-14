@@ -62,7 +62,7 @@ abstract class FileSystemWritableFileStream {
 /// https://developer.mozilla.org/docs/Web/API/FileSystemFileHandle
 abstract class FileSystemFileHandle extends FileSystemHandle {
   /// throws NotAllowedError if FileSystemPermissionMode.read is not granted
-  Future<XFile /*html.File*/ > getFile();
+  Future<XFile> getFile();
 
   /// throws NotAllowedError if FileSystemPermissionMode.readwrite is not granted
   Future<FileSystemWritableFileStream> createWritable({bool? keepExistingData});
@@ -91,6 +91,61 @@ abstract class FileSystemDirectoryHandle extends FileSystemHandle {
   Future<List<String>?> resolve(
     FileSystemHandle possibleDescendant,
   );
+}
+
+extension FileSystemDirectoryHandleExt on FileSystemDirectoryHandle {
+  Future<Result<FileSystemFileHandle, BaseFileError>> getOrReplaceFileHandle<T>(
+      String name) {
+    return _getOrReplaceEntityHandle(name, getFileHandle);
+  }
+
+  Future<Result<FileSystemDirectoryHandle, BaseFileError>>
+      getOrReplaceDirectoryHandle<T>(String name) {
+    return _getOrReplaceEntityHandle(name, getDirectoryHandle);
+  }
+
+  Future<Result<T, BaseFileError>> _getOrReplaceEntityHandle<T>(
+    String name,
+    Future<Result<T, GetHandleError>> Function(String name, {bool? create})
+        getHandle,
+  ) async {
+    final result = await getHandle(name, create: true);
+    return result.map(
+      ok: (ok) => Ok(ok.value),
+      err: (err) async {
+        final error = err.error;
+        if (error.type == GetHandleErrorType.TypeMismatchError) {
+          final removeResult = await removeEntry(name, recursive: true);
+          return removeResult.when(
+            ok: (_) {
+              return getHandle(name, create: true).then(
+                (value) => value.mapErr(
+                  (err) => BaseFileError.castGetHandleError(err),
+                ),
+              );
+            },
+            err: (err) {
+              switch (err.type) {
+                case RemoveEntryErrorType.NotFoundError:
+                  return getHandle(name, create: true).then(
+                    (value) => value.mapErr(
+                      (err) => BaseFileError.castGetHandleError(err),
+                    ),
+                  );
+                case RemoveEntryErrorType.NotAllowedError:
+                case RemoveEntryErrorType.TypeError:
+                  return Err(BaseFileError.castRemoveEntryError(err));
+                case RemoveEntryErrorType.InvalidModificationError:
+                  throw Error();
+              }
+            },
+          );
+        } else {
+          return Err(BaseFileError.castGetHandleError(err.error));
+        }
+      },
+    );
+  }
 }
 
 abstract class FileSystem extends FileSystemI {

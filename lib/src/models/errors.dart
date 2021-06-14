@@ -1,5 +1,59 @@
 import 'package:file_system_access/src/utils.dart';
 
+enum BaseFileErrorType {
+  NotAllowedError,
+  TypeError,
+}
+
+class BaseFileError {
+  final BaseFileErrorType type;
+  final Object? rawError;
+  final StackTrace? rawStack;
+
+  const BaseFileError({
+    required this.type,
+    this.rawError,
+    this.rawStack,
+  });
+
+  static BaseFileErrorType? typeFromString(String raw) {
+    return parseEnum(raw, BaseFileErrorType.values);
+  }
+
+  factory BaseFileError.castGetHandleError(GetHandleError err) {
+    if (GetHandleErrorType.NotAllowedError != err.type &&
+        err.type != GetHandleErrorType.TypeError) {
+      throw err;
+    }
+    return BaseFileError(
+      type: err.type == GetHandleErrorType.NotAllowedError
+          ? BaseFileErrorType.NotAllowedError
+          : BaseFileErrorType.TypeError,
+      rawError: err.rawError,
+      rawStack: err.rawStack,
+    );
+  }
+
+  factory BaseFileError.castRemoveEntryError(RemoveEntryError err) {
+    if (RemoveEntryErrorType.NotAllowedError != err.type &&
+        err.type != RemoveEntryErrorType.TypeError) {
+      throw err;
+    }
+    return BaseFileError(
+      type: err.type == RemoveEntryErrorType.NotAllowedError
+          ? BaseFileErrorType.NotAllowedError
+          : BaseFileErrorType.TypeError,
+      rawError: err.rawError,
+      rawStack: err.rawStack,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'BaseFileError(type: $type, rawError: $rawError, rawStack: $rawStack)';
+  }
+}
+
 /// https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle/getFileHandle
 enum GetHandleErrorType {
   NotFoundError,
