@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:file_selector/file_selector.dart';
 import 'package:file_system_access/src/models/result.dart';
 import 'package:file_system_access/src/models/errors.dart';
+import 'package:file_system_access/src/models/serialized_entity.dart';
+import 'package:file_system_access/src/models/sync.dart';
 import 'package:file_system_access/src/models/write_chunk_type.dart';
 
 enum PermissionStateEnum { granted, denied, prompt }
@@ -208,5 +210,28 @@ abstract class FileSystemI {
     }
     // The user didn't grant permission, so return false.
     return false;
+  }
+
+  Future<Result<DirectorySyncResult?, void>> copyDirectory(
+    FileSystemDirectoryHandle handle,
+    FileSystemDirectoryHandle newHandle,
+  ) async {
+    if (await handle.isSameEntry(newHandle)) {
+      return Ok(null);
+    }
+    final serDir = await SerializedDirectory.fromHandle(handle);
+
+    final _syncronizer = DirectorySyncronizer(
+      getSerializedEntities: () => serDir.entities,
+    );
+    final success = await _syncronizer.selectDirectory(newHandle);
+    if (success) {
+      final result = await _syncronizer.saveEntities();
+      await _syncronizer.dispose();
+      return Ok(result);
+    } else {
+      await _syncronizer.dispose();
+      return Err(null);
+    }
   }
 }
