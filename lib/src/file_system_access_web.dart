@@ -521,7 +521,9 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
     )
         .then<Result<void, RemoveEntryError>>((value) => Ok(value))
         .catchError((Object error, StackTrace stack) {
-      return Err(_mapRemoveEntryError(this, name, error, stack));
+      return Err<void, RemoveEntryError>(
+        _mapRemoveEntryError(this, name, error, stack),
+      );
     });
   }
 
@@ -690,17 +692,17 @@ List<_FilePickerAcceptTypeJS>? _mapFilePickerTypes(
 // }
 
 Future<T> _ptf<T>(_Promise<T> v) async {
-  final vm = await promiseToFuture(v);
+  final vm = await promiseToFuture<Object?>(v);
   return vm as T;
 }
 
 Future<List<T>> _pltf<T>(_Promise<List<T>> v) async {
-  final vm = await promiseToFuture(v);
-  return (vm as List).cast();
+  final vm = await promiseToFuture<Object?>(v);
+  return (vm! as List).cast();
 }
 
 Future<List<T>?> _pltfNull<T>(_Promise<List<T>?> v) async {
-  final vm = await promiseToFuture(v);
+  final vm = await promiseToFuture<Object?>(v);
   return (vm as List?)?.cast();
 }
 

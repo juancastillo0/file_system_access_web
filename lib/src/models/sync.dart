@@ -249,7 +249,7 @@ Future<DirectorySyncResult> saveDirectoryEntities(
               ),
               serDir.entities.asDirectoryMap(),
             )) {
-          return SavedEntityResult(entity: previous!, wasCached: true);
+          return SavedEntityResult(entity: previous, wasCached: true);
         }
         final dirResult = await directory.getOrReplaceDirectoryHandle(
           serDir.name,
@@ -284,7 +284,7 @@ Future<DirectorySyncResult> saveDirectoryEntities(
       },
       file: (serializedFile) async {
         if (!forceUpdate && previous?.value == entity) {
-          return SavedEntityResult(entity: previous!, wasCached: true);
+          return SavedEntityResult(entity: previous, wasCached: true);
         }
         final file = await saveFile(directory, serializedFile);
 

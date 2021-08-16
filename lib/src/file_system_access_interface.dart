@@ -34,7 +34,7 @@ abstract class FileSystemHandle {
 ///   }
 /// }
 ///
-/// [description] An optional description of the category of files types allowed.
+/// [description] An optional description of the category of files types allowed
 /// [accept] An Object with the keys set to the MIME type and the
 /// values an Array of file extensions.
 class FilePickerAcceptType {
@@ -66,7 +66,8 @@ abstract class FileSystemFileHandle extends FileSystemHandle {
   /// throws NotAllowedError if FileSystemPermissionMode.read is not granted
   Future<XFile> getFile();
 
-  /// throws NotAllowedError if FileSystemPermissionMode.readwrite is not granted
+  /// throws NotAllowedError if
+  /// FileSystemPermissionMode.readwriteis not granted
   Future<FileSystemWritableFileStream> createWritable({bool? keepExistingData});
 }
 
@@ -96,13 +97,14 @@ abstract class FileSystemDirectoryHandle extends FileSystemHandle {
 }
 
 extension FileSystemDirectoryHandleExt on FileSystemDirectoryHandle {
-  Future<Result<FileSystemFileHandle, BaseFileError>> getOrReplaceFileHandle<T>(
-      String name) {
+  Future<Result<FileSystemFileHandle, BaseFileError>> getOrReplaceFileHandle(
+    String name,
+  ) {
     return _getOrReplaceEntityHandle(name, getFileHandle);
   }
 
   Future<Result<FileSystemDirectoryHandle, BaseFileError>>
-      getOrReplaceDirectoryHandle<T>(String name) {
+      getOrReplaceDirectoryHandle(String name) {
     return _getOrReplaceEntityHandle(name, getDirectoryHandle);
   }
 
@@ -193,7 +195,8 @@ abstract class FileSystemI {
   /// Exception AbortError
   Future<FileSystemDirectoryHandle?> showDirectoryPicker();
 
-  /// Utility function for querying and requesting permission if it hasn't been granted
+  /// Utility function for querying and requesting 
+  /// permission if it hasn't been granted
   Future<bool> verifyPermission(
     FileSystemHandle fileHandle, {
     required FileSystemPermissionMode mode,

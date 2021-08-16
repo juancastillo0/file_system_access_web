@@ -70,7 +70,7 @@ class FileSystemWritableFileStreamIo extends FileSystemWritableFileStream {
 
   @override
   Future<void> write(FileSystemWriteChunkType data) async {
-    return data.when(
+    await data.when(
       bufferSource: (bufferSource) {
         return sink.writeFrom(bufferSource.asUint8List());
       },

@@ -97,7 +97,7 @@ class _Write extends WriteParams {
   // }
 
   @override
-  Map<String, dynamic> toJson() {
+  Map<String, Object?> toJson() {
     return {
       'type': 'write',
       'position': position,
@@ -120,7 +120,7 @@ class _Seek extends WriteParams {
   // }
 
   @override
-  Map<String, dynamic> toJson() {
+  Map<String, Object?> toJson() {
     return {
       'type': 'seek',
       'position': position,
@@ -142,7 +142,7 @@ class _Truncate extends WriteParams {
   // }
 
   @override
-  Map<String, dynamic> toJson() {
+  Map<String, Object?> toJson() {
     return {
       'type': 'truncate',
       'size': size,

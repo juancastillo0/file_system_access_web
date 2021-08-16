@@ -91,7 +91,7 @@ abstract class SerializedFileEntity {
     }
   }
 
-  Map<String, dynamic> toJson();
+  Map<String, Object?> toJson();
 }
 
 enum TypeSerializedFileEntity {
@@ -185,13 +185,14 @@ class SerializedDirectory extends SerializedFileEntity {
     return SerializedDirectory(
       name: map['name'] as String,
       entities: (map['entities'] as List)
-          .map((e) => SerializedFileEntity.fromJson(e as Map<String, dynamic>))
+          .map((Object? e) =>
+              SerializedFileEntity.fromJson(e! as Map<String, Object?>))
           .toList(),
     );
   }
 
   @override
-  Map<String, dynamic> toJson() {
+  Map<String, Object?> toJson() {
     return {
       'runtimeType': 'directory',
       'name': name,
@@ -242,7 +243,7 @@ class SerializedFile extends SerializedFileEntity {
   }
 
   @override
-  Map<String, dynamic> toJson() {
+  Map<String, Object?> toJson() {
     return {
       'runtimeType': 'file',
       'name': name,
