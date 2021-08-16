@@ -9,14 +9,14 @@ library file_system_access;
 import 'dart:async';
 import 'dart:html' as html;
 import 'dart:js_util';
-import 'package:file_system_access/src/utils.dart';
-import 'package:js/js.dart';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:file_system_access/file_system_access.dart';
+import 'package:file_system_access/src/file_system_access_interface.dart';
 import 'package:file_system_access/src/models/result.dart';
 import 'package:file_system_access/src/models/write_chunk_type.dart';
-import 'package:file_system_access/src/file_system_access_interface.dart';
+import 'package:file_system_access/src/utils.dart';
+import 'package:js/js.dart';
 
 // @JS()
 // @anonymous
@@ -66,7 +66,7 @@ import 'package:file_system_access/src/file_system_access_interface.dart';
 @anonymous
 class _Promise<T> {
   external _Promise<V> then<V>(V Function(T) f);
-  @JS("catch")
+  @JS('catch')
   external _Promise<T> catchFn(void Function(dynamic) f);
 }
 
@@ -103,7 +103,7 @@ abstract class _FileSystemHandleJS implements FileSystemHandle {
       _ptf(inner.isSameEntry((other as _FileSystemHandleJS).inner));
 
   @override
-  FileSystemHandleKind get kind => inner.kind == "directory"
+  FileSystemHandleKind get kind => inner.kind == 'directory'
       ? FileSystemHandleKind.directory
       : FileSystemHandleKind.file;
 
@@ -116,7 +116,7 @@ abstract class _FileSystemHandleJS implements FileSystemHandle {
   }) =>
       _ptf(inner.queryPermission(
         _FileSystemHandlePermissionDescriptor(
-          mode: mode == null ? null : mode.toString().split(".")[1],
+          mode: mode == null ? null : mode.toString().split('.')[1],
         ),
       )).then((value) => parseEnum(value, PermissionStateEnum.values)!);
 
@@ -126,7 +126,7 @@ abstract class _FileSystemHandleJS implements FileSystemHandle {
   }) =>
       _ptf(inner.requestPermission(
         _FileSystemHandlePermissionDescriptor(
-          mode: mode == null ? null : mode.toString().split(".")[1],
+          mode: mode == null ? null : mode.toString().split('.')[1],
         ),
       )).then((value) => parseEnum(value, PermissionStateEnum.values)!);
 }
@@ -273,7 +273,7 @@ class _IteratorValue<T> {
 // }
 
 //@class
-@JS("FileSystemWritableFileStream")
+@JS('FileSystemWritableFileStream')
 abstract class _FileSystemWritableFileStream /*extends WritableStream*/ {
   external _Promise<void> close();
   external _Promise<void> write(dynamic /*FileSystemWriteChunkType*/ data);
@@ -291,10 +291,10 @@ class FileSystemWritableFileStreamJS implements FileSystemWritableFileStream {
       writeParams: (writeParams) {
         final map = writeParams.toJson();
         return _WriteParams(
-          type: map["type"] as String?,
-          position: map["position"] as int?,
-          data: map["data"],
-          size: map["size"] as int?,
+          type: map['type'] as String?,
+          position: map['position'] as int?,
+          data: map['data'],
+          size: map['size'] as int?,
         );
       },
       orElse: () => data.value,
@@ -317,7 +317,7 @@ class FileSystemWritableFileStreamJS implements FileSystemWritableFileStream {
 // type FileSystemHandle = FileSystemFileHandle | FileSystemDirectoryHandle;
 
 //@class
-@JS("FileSystemFileHandle")
+@JS('FileSystemFileHandle')
 abstract class _FileSystemFileHandle extends _FileSystemHandle {
   external _Promise<html.File> getFile();
   external _Promise<_FileSystemWritableFileStream> createWritable(
@@ -354,7 +354,7 @@ XFile _convertFileToXFile(html.File file) => XFile(
     );
 
 //@class
-@JS("FileSystemDirectoryHandle")
+@JS('FileSystemDirectoryHandle')
 abstract class _FileSystemDirectoryHandle extends _FileSystemHandle {
   external _Promise<_FileSystemFileHandle> getFileHandle(String name,
       [_FileSystemGetFileOptions? options]);
@@ -520,7 +520,7 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
       _inner.removeEntry(name, _FileSystemRemoveOptions(recursive: recursive)),
     )
         .then<Result<void, RemoveEntryError>>((value) => Ok(value))
-        .catchError((error, stack) {
+        .catchError((Object error, StackTrace stack) {
       return Err(_mapRemoveEntryError(this, name, error, stack));
     });
   }
@@ -544,15 +544,15 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
 //   external _Promise<FileSystemDirectoryHandle> getDirectory();
 // }
 
-@JS("showOpenFilePicker")
+@JS('showOpenFilePicker')
 external _Promise<List<_FileSystemFileHandle>> _showOpenFilePicker(
     [_OpenFilePickerOptions? options]);
 
-@JS("showSaveFilePicker")
+@JS('showSaveFilePicker')
 external _Promise<_FileSystemFileHandle> _showSaveFilePicker(
     [/*Save*/ _FilePickerOptions? options]);
 
-@JS("showDirectoryPicker")
+@JS('showDirectoryPicker')
 external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker();
 
 class FileSystem extends FileSystemI {
@@ -560,6 +560,7 @@ class FileSystem extends FileSystemI {
 
   static const FileSystem instance = FileSystem._();
 
+  @override
   bool get isSupported => hasProperty(html.window, 'showOpenFilePicker');
 
   // @override
@@ -610,7 +611,7 @@ class FileSystem extends FileSystemI {
         .then<List<FileSystemFileHandle>>(
       (value) => value.map((e) => FileSystemFileHandleJS(e)).toList(),
     ) // TODO: distinguish AbortError from others (for example, unsupported)
-        .catchError((error) {
+        .onError((Object error, StackTrace _) {
       if (error is html.DomException && html.DomException.ABORT == error.name) {
         return <FileSystemFileHandle>[];
       }
@@ -630,7 +631,7 @@ class FileSystem extends FileSystemI {
         )),
       ).then<FileSystemFileHandle?>((value) => FileSystemFileHandleJS(value))
           // TODO: distinguish AbortError from others (for example, unsupported)
-          .catchError((error) {
+          .onError((Object error, _) {
         if (error is html.DomException &&
             html.DomException.ABORT == error.name) {
           return null;
@@ -644,7 +645,7 @@ class FileSystem extends FileSystemI {
           .then<FileSystemDirectoryHandle?>(
               (value) => FileSystemDirectoryHandleJS(value))
           // TODO: distinguish AbortError from others (for example, unsupported)
-          .catchError((error) {
+          .onError((Object error, _) {
         if (error is html.DomException &&
             html.DomException.ABORT == error.name) {
           return null;

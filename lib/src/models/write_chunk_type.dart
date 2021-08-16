@@ -28,7 +28,7 @@ abstract class FileSystemWriteChunkType {
     if (v is _BufferSource) return bufferSource(v.value);
     if (v is _String) return string(v.value);
     if (v is _WriteParams) return writeParams(v.value);
-    throw "";
+    throw '';
   }
 
   T maybeWhen<T>({
@@ -38,12 +38,14 @@ abstract class FileSystemWriteChunkType {
     T Function(WriteParams value)? writeParams,
   }) {
     final FileSystemWriteChunkType v = this;
-    if (v is _BufferSource)
+    if (v is _BufferSource) {
       return bufferSource != null ? bufferSource(v.value) : orElse.call();
+    }
     if (v is _String) return string != null ? string(v.value) : orElse.call();
-    if (v is _WriteParams)
+    if (v is _WriteParams) {
       return writeParams != null ? writeParams(v.value) : orElse.call();
-    throw "";
+    }
+    throw '';
   }
 
   T map<T>({
@@ -55,7 +57,7 @@ abstract class FileSystemWriteChunkType {
     if (v is _BufferSource) return bufferSource(v);
     if (v is _String) return string(v);
     if (v is _WriteParams) return writeParams(v);
-    throw "";
+    throw '';
   }
 
   T maybeMap<T>({
@@ -65,13 +67,15 @@ abstract class FileSystemWriteChunkType {
     T Function(_WriteParams value)? writeParams,
   }) {
     final FileSystemWriteChunkType v = this;
-    if (v is _BufferSource)
+    if (v is _BufferSource) {
       return bufferSource != null ? bufferSource(v) : orElse.call();
+    }
 
     if (v is _String) return string != null ? string(v) : orElse.call();
-    if (v is _WriteParams)
+    if (v is _WriteParams) {
       return writeParams != null ? writeParams(v) : orElse.call();
-    throw "";
+    }
+    throw '';
   }
 }
 

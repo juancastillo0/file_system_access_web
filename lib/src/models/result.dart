@@ -129,8 +129,8 @@ TypeResult? parseTypeResult(String rawString, {bool caseSensitive = true}) {
 }
 
 extension TypeResultExtension on TypeResult {
-  String toEnumString() => toString().split(".")[1];
-  String enumType() => toString().split(".")[0];
+  String toEnumString() => toString().split('.')[1];
+  String enumType() => toString().split('.')[0];
 
   bool get isOk => this == TypeResult.ok;
   bool get isErr => this == TypeResult.err;

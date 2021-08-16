@@ -1,3 +1,5 @@
+// ignore_for_file: constant_identifier_names
+
 import 'package:file_system_access/file_system_access.dart';
 import 'package:file_system_access/src/utils.dart';
 
@@ -59,7 +61,8 @@ class BaseFileError {
 
   @override
   String toString() {
-    return 'BaseFileError(type: $type, rawError: $rawError, rawStack: $rawStack)';
+    return 'BaseFileError(type: $type, rawError: '
+        '$rawError, rawStack: $rawStack)';
   }
 }
 
@@ -114,7 +117,8 @@ class GetHandleError {
 
   @override
   String toString() {
-    return 'GetHandleError(type: $type, rawError: $rawError, rawStack: $rawStack)';
+    return 'GetHandleError(type: $type, rawError: '
+        '$rawError, rawStack: $rawStack)';
   }
 }
 
@@ -169,7 +173,8 @@ class RemoveEntryError {
 
   @override
   String toString() {
-    return 'RemoveEntryError(type: $type, rawError: $rawError, rawStack: $rawStack)';
+    return 'RemoveEntryError(type: $type, rawError: '
+        '$rawError, rawStack: $rawStack)';
   }
 }
 

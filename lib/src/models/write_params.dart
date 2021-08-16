@@ -23,7 +23,7 @@ abstract class WriteParams {
     if (v is _Write) return write(v.data, v.position);
     if (v is _Seek) return seek(v.position);
     if (v is _Truncate) return truncate(v.size);
-    throw "";
+    throw '';
   }
 
   T maybeWhen<T>({
@@ -33,12 +33,14 @@ abstract class WriteParams {
     T Function(int size)? truncate,
   }) {
     final WriteParams v = this;
-    if (v is _Write)
+    if (v is _Write) {
       return write != null ? write(v.data, v.position) : orElse.call();
+    }
     if (v is _Seek) return seek != null ? seek(v.position) : orElse.call();
-    if (v is _Truncate)
+    if (v is _Truncate) {
       return truncate != null ? truncate(v.size) : orElse.call();
-    throw "";
+    }
+    throw '';
   }
 
   T map<T>({
@@ -50,7 +52,7 @@ abstract class WriteParams {
     if (v is _Write) return write(v);
     if (v is _Seek) return seek(v);
     if (v is _Truncate) return truncate(v);
-    throw "";
+    throw '';
   }
 
   T maybeMap<T>({
@@ -63,7 +65,7 @@ abstract class WriteParams {
     if (v is _Write) return write != null ? write(v) : orElse.call();
     if (v is _Seek) return seek != null ? seek(v) : orElse.call();
     if (v is _Truncate) return truncate != null ? truncate(v) : orElse.call();
-    throw "";
+    throw '';
   }
 //   static WriteParams fromJson(Map<String, dynamic> map) {
 //   switch (map["runtimeType"] as String) {
@@ -97,9 +99,9 @@ class _Write extends WriteParams {
   @override
   Map<String, dynamic> toJson() {
     return {
-      "type": "write",
-      "position": position,
-      "data": data.value,
+      'type': 'write',
+      'position': position,
+      'data': data.value,
     };
   }
 }
@@ -120,8 +122,8 @@ class _Seek extends WriteParams {
   @override
   Map<String, dynamic> toJson() {
     return {
-      "type": "seek",
-      "position": position,
+      'type': 'seek',
+      'position': position,
     };
   }
 }
@@ -142,8 +144,8 @@ class _Truncate extends WriteParams {
   @override
   Map<String, dynamic> toJson() {
     return {
-      "type": "truncate",
-      "size": size,
+      'type': 'truncate',
+      'size': size,
     };
   }
 }

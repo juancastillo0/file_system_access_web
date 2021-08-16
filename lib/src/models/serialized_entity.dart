@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:file_system_access/file_system_access.dart';
 import 'package:flutter/foundation.dart';
 
+@immutable
 abstract class SerializedFileEntity {
   const SerializedFileEntity._();
 
@@ -78,14 +79,15 @@ abstract class SerializedFileEntity {
   TypeSerializedFileEntity get typeEnum;
 
   static SerializedFileEntity fromJson(Map<String, dynamic> map) {
-    switch (map["runtimeType"] as String) {
-      case "directory":
+    switch (map['runtimeType'] as String) {
+      case 'directory':
         return SerializedDirectory.fromJson(map);
-      case "file":
+      case 'file':
         return SerializedFile.fromJson(map);
       default:
         throw Exception(
-            'Invalid discriminator for SerializedFileEntity.fromJson ${map["runtimeType"]}. Input map: $map');
+            'Invalid discriminator for SerializedFileEntity.fromJson '
+            '${map["runtimeType"]}. Input map: $map');
     }
   }
 
@@ -112,8 +114,8 @@ TypeSerializedFileEntity? parseTypeSerializedFileEntity(String rawString,
 }
 
 extension TypeSerializedFileEntityExtension on TypeSerializedFileEntity {
-  String toEnumString() => toString().split(".")[1];
-  String enumType() => toString().split(".")[0];
+  String toEnumString() => toString().split('.')[1];
+  String enumType() => toString().split('.')[0];
 
   bool get isSerializedDirectory => this == TypeSerializedFileEntity.directory;
   bool get isSerializedFile => this == TypeSerializedFileEntity.file;
@@ -149,6 +151,7 @@ extension TypeSerializedFileEntityExtension on TypeSerializedFileEntity {
 }
 
 class SerializedDirectory extends SerializedFileEntity {
+  @override
   final String name;
   final List<SerializedFileEntity> entities;
 
@@ -164,7 +167,7 @@ class SerializedDirectory extends SerializedFileEntity {
       if (handle is FileSystemFileHandle) {
         return SerializedFile.fromHandle(handle);
       } else {
-        final dir = (handle as FileSystemDirectoryHandle);
+        final dir = handle as FileSystemDirectoryHandle;
         return fromHandle(dir);
       }
     }).toList();
@@ -190,9 +193,9 @@ class SerializedDirectory extends SerializedFileEntity {
   @override
   Map<String, dynamic> toJson() {
     return {
-      "runtimeType": "directory",
-      "name": name,
-      "entities": entities.map((e) => e.toJson()).toList(),
+      'runtimeType': 'directory',
+      'name': name,
+      'entities': entities.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -210,6 +213,7 @@ class SerializedDirectory extends SerializedFileEntity {
 }
 
 class SerializedFile extends SerializedFileEntity {
+  @override
   final String name;
   final String content;
 
@@ -240,9 +244,9 @@ class SerializedFile extends SerializedFileEntity {
   @override
   Map<String, dynamic> toJson() {
     return {
-      "runtimeType": "file",
-      "name": name,
-      "content": content,
+      'runtimeType': 'file',
+      'name': name,
+      'content': content,
     };
   }
 

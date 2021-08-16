@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:file_system_access/file_system_access.dart';
 import 'package:file_system_access/src/models/result.dart';
 
@@ -98,8 +98,8 @@ class FileSystemWritableFileStreamIo extends FileSystemWritableFileStream {
 
   @override
   String toString() {
-    return "FileSystemWritableFileStreamIo(file: ${file.toString()}, "
-        "keepExistingData:$keepExistingData, sink: ${sink.toString()})";
+    return 'FileSystemWritableFileStreamIo(file: ${file.toString()}, '
+        'keepExistingData:$keepExistingData, sink: ${sink.toString()})';
   }
 }
 
@@ -140,7 +140,7 @@ class FileSystemFileHandleIo extends FileSystemHandleIo
 
   @override
   String toString() {
-    return "FileSystemFileHandleIo(file: ${file.toString()})";
+    return 'FileSystemFileHandleIo(file: ${file.toString()})';
   }
 }
 
@@ -249,7 +249,7 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
         break;
     }
     await entity.delete(recursive: recursive ?? false);
-    return Ok(null);
+    return const Ok(null);
   }
 
   @override
@@ -296,7 +296,7 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
 
   @override
   String toString() {
-    return "FileSystemDirectoryHandleIo(path: $path)";
+    return 'FileSystemDirectoryHandleIo(path: $path)';
   }
 }
 
@@ -305,7 +305,8 @@ class FileSystem extends FileSystemI {
 
   static const FileSystem instance = FileSystem._();
 
-  final bool isSupported = true;
+  @override
+  bool get isSupported => true;
 
   @override
   Future<FileSystemDirectoryHandle?> showDirectoryPicker() async {

@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:file_selector/file_selector.dart';
-import 'package:file_system_access/src/models/result.dart';
 import 'package:file_system_access/src/models/errors.dart';
+import 'package:file_system_access/src/models/result.dart';
 import 'package:file_system_access/src/models/serialized_entity.dart';
 import 'package:file_system_access/src/models/sync.dart';
 import 'package:file_system_access/src/models/write_chunk_type.dart';
@@ -217,7 +217,7 @@ abstract class FileSystemI {
     FileSystemDirectoryHandle newHandle,
   ) async {
     if (await handle.isSameEntry(newHandle)) {
-      return Ok(null);
+      return const Ok(null);
     }
     final serDir = await SerializedDirectory.fromHandle(handle);
 
@@ -231,7 +231,7 @@ abstract class FileSystemI {
       return Ok(result);
     } else {
       await _syncronizer.dispose();
-      return Err(null);
+      return const Err(null);
     }
   }
 }

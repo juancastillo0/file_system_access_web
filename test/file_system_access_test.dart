@@ -1,6 +1,5 @@
-import 'package:test/test.dart';
-
 import 'package:file_system_access/file_system_access.dart';
+import 'package:test/test.dart';
 
 void main() {
   test('open one file', () async {
@@ -19,7 +18,7 @@ void main() {
     final directoryHandle = _directoryHandle!;
     expect(directoryHandle.kind, FileSystemHandleKind.directory);
 
-    const _fileName = "fileName.txt";
+    const _fileName = 'fileName.txt';
 
     final fileHandleResult = await directoryHandle.getFileHandle(
       _fileName,
@@ -42,7 +41,7 @@ void main() {
 
         await writable.seek(content.length);
         await writable.write(
-            FileSystemWriteChunkType.string("\nAPPENDED_NEW_LINE_STRING"));
+            const FileSystemWriteChunkType.string('\nAPPENDED_NEW_LINE_STR'));
         await writable.close();
       },
       err: (error) async {
