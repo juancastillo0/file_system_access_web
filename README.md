@@ -12,3 +12,18 @@ multiple Flutter or Dart projects.
 For help getting started with Flutter, view our 
 [online documentation](https://flutter.dev/docs), which offers tutorials, 
 samples, guidance on mobile development, and a full API reference.
+
+
+MDN:
+https://developer.mozilla.org/docs/Web/API/File_System_Access_API
+
+GitHub:
+https://github.com/WICG/file-system-access
+
+Article:
+https://web.dev/file-system-access/
+
+TypeScript definitions:
+https://www.npmjs.com/package/@types/wicg-file-system-access
+
+
