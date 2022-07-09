@@ -56,9 +56,22 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     state.addListener(_onUpdate);
     _errorSubs = state.errorsStream.listen((event) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(event)),
+      late final ScaffoldFeatureController controller;
+      final snackbar = SnackBar(
+        backgroundColor: Colors.red,
+        width: 400,
+        behavior: SnackBarBehavior.floating,
+        content: Text(event),
+        action: SnackBarAction(
+          textColor: Colors.white,
+          label: 'Close',
+          onPressed: () {
+            controller.close();
+          },
+        ),
       );
+
+      controller = ScaffoldMessenger.of(context).showSnackBar(snackbar);
     });
   }
 
@@ -71,6 +84,51 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final isHorizontal = mq.size.width > 1100;
+    int _index = -1;
+
+    Widget child = Flex(
+      direction: isHorizontal ? Axis.horizontal : Axis.vertical,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _directoryWidget(),
+        _selectFilesWidget(),
+        _currentFileWidget(),
+      ]
+          .expand(
+            (e) sync* {
+              final _inner = Padding(
+                padding: const EdgeInsets.all(10),
+                child: e,
+              );
+              _index++;
+
+              yield isHorizontal ? const VerticalDivider() : const Divider();
+              if (isHorizontal) {
+                yield Expanded(
+                  flex: _index == 1 ? 3 : 2,
+                  child: _inner,
+                );
+              } else {
+                yield Center(
+                  child: SizedBox(
+                    height: 320,
+                    width: mq.size.width < 600 ? mq.size.width : 600,
+                    child: _inner,
+                  ),
+                );
+              }
+            },
+          )
+          .skip(1)
+          .toList(),
+    );
+
+    if (!isHorizontal) {
+      child = SingleChildScrollView(child: child);
+    }
+
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 46,
@@ -100,30 +158,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
         title: Text(widget.title),
       ),
-      body: Row(
-        // mainAxisAlignment: MainAxisAlignment.center,
-        // crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: _directoryWidget(),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: _selectFilesWidget(),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: _currentFileWidget(),
-            ),
-          ),
-        ],
-      ),
+      body: child,
 
       // floatingActionButton: FloatingActionButton(
       //   onPressed: _incrementCounter,
@@ -144,11 +179,13 @@ class _MyHomePageState extends State<MyHomePage> {
             child: const Text('Select Directory'),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: (state.selectedDirectory.value != null)
-              ? _selectedDirectoryWidget()
-              : const Text('No directory selected'),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: (state.selectedDirectory.value != null)
+                ? _selectedDirectoryWidget()
+                : const Text('No directory selected'),
+          ),
         ),
       ],
     );
@@ -164,106 +201,11 @@ class _MyHomePageState extends State<MyHomePage> {
         if (!snapshot.hasData) {
           return const CircularProgressIndicator();
         }
-        final dir = state.selectedDirectory.value!;
+
         return Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                if (state.directoryStack.value.isNotEmpty)
-                  InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () {
-                      state.popDirectoryFromStack();
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.all(4.0),
-                      child: Icon(Icons.arrow_back),
-                    ),
-                  )
-                else
-                  const SizedBox(width: 32),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      '"${dir.name}" - ${snapshot.data!.length} items',
-                    ),
-                  ),
-                ),
-                if (isDeleting)
-                  InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () {
-                      setState(() {
-                        handlesToDelete = null;
-                      });
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.all(4.0),
-                      child: Icon(Icons.close),
-                    ),
-                  )
-                else
-                  InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () async {
-                      final FileSystemCreateItemInfo? info =
-                          await showFileItemCreateDialog();
-                      if (info == null) return;
-                      state.createItemInDirectory(
-                        info.name,
-                        info.kind,
-                      );
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.all(4.0),
-                      child: Icon(Icons.note_add),
-                    ),
-                  ),
-                InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () {
-                    setState(() {
-                      final _handles = handlesToDelete;
-                      if (_handles != null && _handles.isNotEmpty) {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            content: Text(
-                              'Are you sure you want to delete ${_handles.length} items?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                  state.deleteItems(_handles.values.toList());
-                                  setState(() {
-                                    handlesToDelete = null;
-                                  });
-                                },
-                                child: const Text('Delete'),
-                              ),
-                            ],
-                          ),
-                        );
-                      } else {
-                        handlesToDelete = {};
-                      }
-                    });
-                  },
-                  child: const Padding(
-                    padding: EdgeInsets.all(4.0),
-                    child: Icon(Icons.delete),
-                  ),
-                ),
-              ],
-            ),
+            _directoryTitleWidget(snapshot.data!.length),
             const Divider(),
             if (snapshot.data!.isEmpty)
               const Padding(
@@ -272,57 +214,164 @@ class _MyHomePageState extends State<MyHomePage> {
                   'Empty directory',
                 ),
               ),
-            ...snapshot.data!.map(
-              (e) => Row(
+            Expanded(
+              child: ListView(
                 children: [
-                  if (handlesToDelete != null)
-                    SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: Checkbox(
-                        value: handlesToDelete!.containsKey(state.resolve(e)),
-                        onChanged: (v) {
-                          setState(() {
-                            final key = state.resolve(e);
-                            if (v == false) {
-                              handlesToDelete!.remove(key);
-                            } else {
-                              handlesToDelete![key] = e;
-                            }
-                          });
-                        },
-                      ),
-                    )
-                  else if (e is FileSystemFileHandle)
-                    IconButton(
-                      splashRadius: 18,
-                      iconSize: 18,
-                      onPressed: () async {
-                        final str = await state.selectFileForEdit(e);
-                        if (str != null && str.isNotEmpty) {
-                          textController.text = str;
-                        }
-                      },
-                      icon: const Icon(Icons.edit),
-                    )
-                  else if (e is FileSystemDirectoryHandle)
-                    IconButton(
-                      splashRadius: 18,
-                      iconSize: 18,
-                      onPressed: () {
-                        state.viewInnerDirectory(e);
-                      },
-                      icon: const Icon(Icons.folder_open),
+                  ...snapshot.data!.map(
+                    (e) => Row(
+                      children: [
+                        if (handlesToDelete != null)
+                          SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Checkbox(
+                              value: handlesToDelete!
+                                  .containsKey(state.resolve(e)),
+                              onChanged: (v) {
+                                setState(() {
+                                  final key = state.resolve(e);
+                                  if (v == false) {
+                                    handlesToDelete!.remove(key);
+                                  } else {
+                                    handlesToDelete![key] = e;
+                                  }
+                                });
+                              },
+                            ),
+                          )
+                        else if (e is FileSystemFileHandle)
+                          IconButton(
+                            splashRadius: 18,
+                            iconSize: 18,
+                            onPressed: () async {
+                              final str = await state.selectFileForEdit(e);
+                              if (str != null && str.isNotEmpty) {
+                                textController.text = str;
+                              }
+                            },
+                            icon: const Icon(Icons.edit),
+                          )
+                        else if (e is FileSystemDirectoryHandle)
+                          IconButton(
+                            splashRadius: 18,
+                            iconSize: 18,
+                            onPressed: () {
+                              state.viewInnerDirectory(e);
+                            },
+                            icon: const Icon(Icons.folder_open),
+                          ),
+                        Expanded(
+                          child: SelectableText('${e.name} (${e.kind.name})'),
+                        ),
+                      ],
                     ),
-                  Expanded(
-                    child: Text('${e.name} (${e.kind.name})'),
                   ),
                 ],
               ),
-            )
+            ),
           ],
         );
       }),
+    );
+  }
+
+  Widget _directoryTitleWidget(int length) {
+    final dir = state.selectedDirectory.value!;
+    return Row(
+      children: [
+        if (state.directoryStack.value.isNotEmpty)
+          InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              state.popDirectoryFromStack();
+            },
+            child: const Padding(
+              padding: EdgeInsets.all(4.0),
+              child: Icon(Icons.arrow_back),
+            ),
+          )
+        else
+          const SizedBox(width: 32),
+        Expanded(
+          child: Center(
+            child: Text(
+              '"${dir.name}" - $length items',
+            ),
+          ),
+        ),
+        if (isDeleting)
+          InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              setState(() {
+                handlesToDelete = null;
+              });
+            },
+            child: const Padding(
+              padding: EdgeInsets.all(4.0),
+              child: Icon(Icons.close),
+            ),
+          )
+        else
+          InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () async {
+              final FileSystemCreateItemInfo? info =
+                  await showFileItemCreateDialog();
+              if (info == null) return;
+              state.createItemInDirectory(
+                info.name,
+                info.kind,
+              );
+            },
+            child: const Padding(
+              padding: EdgeInsets.all(4.0),
+              child: Icon(Icons.note_add),
+            ),
+          ),
+        InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () {
+            setState(() {
+              final _handles = handlesToDelete;
+              if (_handles != null && _handles.isNotEmpty) {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    content: Text(
+                      'Are you sure you want to delete ${_handles.length} items?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          state.deleteItems(_handles.values.toList());
+                          setState(() {
+                            handlesToDelete = null;
+                          });
+                        },
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+              } else {
+                handlesToDelete = {};
+              }
+            });
+          },
+          child: const Padding(
+            padding: EdgeInsets.all(4.0),
+            child: Icon(Icons.delete),
+          ),
+        ),
+      ],
     );
   }
 
@@ -402,13 +451,18 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _selectFilesWidget() {
     const _headersPadding = EdgeInsets.all(3);
-    Widget _header(String text) => Padding(
-          padding: _headersPadding,
-          child: Text(
-            text,
-            style: Theme.of(context).textTheme.subtitle1,
-          ),
-        );
+    Widget _header(String text) {
+      return Padding(
+        padding: _headersPadding,
+        child: SelectableText(
+          text,
+          style: Theme.of(context)
+              .textTheme
+              .subtitle1!
+              .copyWith(fontWeight: FontWeight.bold),
+        ),
+      );
+    }
 
     return Column(
       children: [
@@ -449,58 +503,85 @@ class _MyHomePageState extends State<MyHomePage> {
             child: const Text('Select Files'),
           ),
         ),
-        if (state.selectedFilesDesc.value != null)
-          Table(
-            columnWidths: const {4: FixedColumnWidth(60)},
-            border: TableBorder.all(),
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            children: [
-              TableRow(
-                // decoration: const BoxDecoration(
-                //   border: Border.fromBorderSide(BorderSide()),
-                // ),
+        if (state.selectedFilesDesc != null)
+          Expanded(
+            child: SingleChildScrollView(
+              child: Table(
+                columnWidths: const {
+                  3: FixedColumnWidth(80),
+                  4: FixedColumnWidth(70),
+                },
+                border: TableBorder.all(),
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                 children: [
-                  _header('Name'),
-                  _header('MimeType'),
-                  _header('LastModified'),
-                  _header('Bytes'),
-                  _header('Action'),
+                  TableRow(
+                    // decoration: const BoxDecoration(
+                    //   border: Border.fromBorderSide(BorderSide()),
+                    // ),
+                    children: [
+                      _header('Name'),
+                      _header('MimeType'),
+                      _header('LastModified'),
+                      _header('Bytes'),
+                      _header('Action'),
+                    ],
+                  ),
+                  ...state.selectedFilesDesc!.map(
+                    (e) => TableRow(
+                      // decoration: const BoxDecoration(
+                      //   border: Border.fromBorderSide(BorderSide()),
+                      // ),
+                      children: [
+                        SelectableText(e.name),
+                        SelectableText(e.mimeType ?? ''),
+                        SelectableText(e.lastModified
+                            .toIso8601String()
+                            .replaceFirst('T', '\n')),
+                        SelectableText(e.humanReadableBytes),
+                        (e.mimeType ?? '').startsWith('image/')
+                            ? InkWell(
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      content: Image.network(e.file.path),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                          child: const Text('Close'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                child: Image.network(e.file.path),
+                              )
+                            : InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: () async {
+                                  final str =
+                                      await state.selectFileForEdit(e.handle);
+                                  if (str != null && str.isNotEmpty) {
+                                    textController.text = str;
+                                  }
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4.0),
+                                  child: Icon(Icons.edit),
+                                ),
+                              ),
+                      ]
+                          .map(
+                            (e) => Padding(padding: _headersPadding, child: e),
+                          )
+                          .toList(),
+                    ),
+                  )
                 ],
               ),
-              ...state.selectedFilesDesc.value!.map(
-                (e) => TableRow(
-                  // decoration: const BoxDecoration(
-                  //   border: Border.fromBorderSide(BorderSide()),
-                  // ),
-                  children: [
-                    Text(e.name),
-                    Text(e.mimeType ?? ''),
-                    Text(e.lastModified
-                        .toIso8601String()
-                        .replaceFirst('T', '\n')),
-                    Text(e.lengthInBytes.toString()),
-                    (e.mimeType ?? '').startsWith('image/')
-                        ? Image.network(e.file.path)
-                        : InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () async {
-                              final str =
-                                  await state.selectFileForEdit(e.handle);
-                              if (str != null && str.isNotEmpty) {
-                                textController.text = str;
-                              }
-                            },
-                            child: const Padding(
-                              padding: EdgeInsets.all(4.0),
-                              child: Icon(Icons.edit),
-                            ),
-                          ),
-                  ]
-                      .map((e) => Padding(padding: _headersPadding, child: e))
-                      .toList(),
-                ),
-              )
-            ],
+            ),
           )
       ],
     );
@@ -540,7 +621,7 @@ class _MyHomePageState extends State<MyHomePage> {
               children: [
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: TextField(
                       controller: textController,
                       // expands: true,
@@ -549,18 +630,18 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                 ),
-                (state.selectedFileForSave.value != null)
+                (state.selectedFileForSaveDesc != null)
                     ? Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           (() {
-                            final desc = state.selectedFileForSaveDesc.value!;
+                            final desc = state.selectedFileForSaveDesc!;
                             final _mime =
                                 desc.mimeType == null || desc.mimeType!.isEmpty
                                     ? ''
                                     : ' (${desc.mimeType})';
-                            return Text(
-                              '"${desc.name}"$_mime - ${desc.lengthInBytes} bytes\n${desc.lastModified}',
+                            return SelectableText(
+                              '"${desc.name}"$_mime - ${desc.humanReadableBytes}\n${desc.lastModified}',
                             );
                           })(),
                           ElevatedButton(
@@ -589,6 +670,27 @@ class AppState extends ChangeNotifier {
     for (final n in allNotifiers) {
       n.addListener(notifyListeners);
     }
+
+    selectedFiles.addListener(() async {
+      if (selectedFiles.value == null) {
+        selectedFilesDesc = null;
+      } else {
+        selectedFilesDesc = await Future.wait(
+          selectedFiles.value!.map(FileDescriptor.fromHandle),
+        );
+        notifyListeners();
+      }
+    });
+
+    selectedFileForSave.addListener(() async {
+      if (selectedFileForSave.value == null) {
+        selectedFileForSaveDesc = null;
+      } else {
+        selectedFileForSaveDesc =
+            await FileDescriptor.fromHandle(selectedFileForSave.value!);
+        notifyListeners();
+      }
+    });
   }
 
   late final List<AppNotifier> allNotifiers = [
@@ -597,9 +699,7 @@ class AppState extends ChangeNotifier {
     multiple,
     onlyImages,
     selectedFiles,
-    selectedFilesDesc,
     selectedFileForSave,
-    selectedFileForSaveDesc,
     requestReadPermissions,
     requestWritePermissions,
   ];
@@ -613,14 +713,12 @@ class AppState extends ChangeNotifier {
       AppNotifier<List<FileSystemDirectoryHandle>>('directoryStack', []);
   final multiple = AppNotifier<bool>('multiple', true);
   final onlyImages = AppNotifier<bool>('onlyImages', false);
-  final selectedFilesDesc =
-      AppNotifier<List<FileDescriptor>?>('selectedFilesDesc', null);
+  List<FileDescriptor>? selectedFilesDesc;
   final selectedFiles =
       AppNotifier<List<FileSystemFileHandle>?>('selectedFiles', null);
   final selectedFileForSave =
       AppNotifier<FileSystemFileHandle?>('selectedFileForSave', null);
-  final selectedFileForSaveDesc =
-      AppNotifier<FileDescriptor?>('selectedFileForSaveDesc', null);
+  FileDescriptor? selectedFileForSaveDesc;
 
   final requestReadPermissions =
       AppNotifier<bool>('requestReadPermissions', true);
@@ -721,8 +819,6 @@ class AppState extends ChangeNotifier {
     if (files.isEmpty) {
       _errorsController.add('No files selected');
     } else {
-      selectedFilesDesc.value =
-          await Future.wait(files.map(FileDescriptor.fromHandle));
       selectedFiles.value = files;
     }
   }
@@ -746,11 +842,11 @@ class AppState extends ChangeNotifier {
       );
       await writable.write(FileSystemWriteChunkType.string(text));
       await writable.close();
-      selectedFileForSaveDesc.value =
+      selectedFileForSaveDesc =
           await FileDescriptor.fromHandle(selectedFileForSave.value!);
+      notifyListeners();
     } catch (e, s) {
       selectedFileForSave.value = null;
-      selectedFileForSaveDesc.value = null;
       _errorsController.add('Error saving file. $e $s');
     }
   }
@@ -766,8 +862,6 @@ class AppState extends ChangeNotifier {
       try {
         final file = await fileHandle.getFile();
         final contentsStr = await file.readAsString();
-        selectedFileForSaveDesc.value =
-            await FileDescriptor.fromHandle(fileHandle);
         selectedFileForSave.value = fileHandle;
         return contentsStr;
       } catch (e, s) {
@@ -818,6 +912,19 @@ class FileDescriptor {
   final int lengthInBytes;
   final FileSystemFileHandle handle;
   final XFile file;
+
+  String get humanReadableBytes {
+    final l = lengthInBytes;
+    if (l < 1000) {
+      return '$l bytes';
+    } else if (l < 1e6) {
+      return '${(l / 1000).toStringAsFixed(2)} kB';
+    } else if (l < 1e9) {
+      return '${(l / 1e6).toStringAsFixed(2)} MB';
+    } else {
+      return '${(l / 1e9).toStringAsFixed(2)} GB';
+    }
+  }
 
   FileDescriptor({
     required this.handle,
