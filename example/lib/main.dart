@@ -1,4 +1,11 @@
+import 'dart:async';
+
+import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
+
+import 'package:file_system_access/file_system_access.dart';
+import 'package:url_launcher/link.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,36 +18,21 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'File System Access',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.indigo,
+        inputDecorationTheme: const InputDecorationTheme(
+          border: OutlineInputBorder(),
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'File System Access'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
@@ -48,68 +40,814 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  final state = AppState();
+  final textController = TextEditingController();
+  bool get isDeleting => handlesToDelete != null;
+  Map<String, FileSystemHandle>? handlesToDelete;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+  StreamSubscription<String>? _errorSubs;
+
+  _onUpdate() {
+    setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    state.addListener(_onUpdate);
+    _errorSubs = state.errorsStream.listen((event) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(event)),
+      );
     });
   }
 
   @override
+  void dispose() {
+    _errorSubs?.cancel();
+    state.removeListener(_onUpdate);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
+        toolbarHeight: 46,
+        actions: [
+          Link(
+            target: LinkTarget.blank,
+            uri: Uri.parse(
+              'https://developer.mozilla.org/docs/Web/API/File_System_Access_API',
+            ),
+            builder: (context, launch) => TextButton(
+              style: TextButton.styleFrom(primary: Colors.white),
+              onPressed: launch,
+              child: const Text('Mozilla Docs'),
+            ),
+          ),
+          Link(
+            target: LinkTarget.blank,
+            uri: Uri.parse(
+              'https://github.com/juancastillo0/file_system_access_web',
+            ),
+            builder: (context, launch) => TextButton(
+              style: TextButton.styleFrom(primary: Colors.white),
+              onPressed: launch,
+              child: const Text('Github'),
+            ),
+          ),
+        ],
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      body: Row(
+        // mainAxisAlignment: MainAxisAlignment.center,
+        // crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: _directoryWidget(),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: _selectFilesWidget(),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: _currentFileWidget(),
+            ),
+          ),
+        ],
+      ),
+
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: _incrementCounter,
+      //   tooltip: 'Increment',
+      //   child: const Icon(Icons.add),
+      // ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+
+  Widget _directoryWidget() {
+    return Column(
+      children: [
+        Text('Is supported: ${FileSystem.instance.isSupported}'),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ElevatedButton(
+            onPressed: state.selectDirectory,
+            child: const Text('Select Directory'),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: (state.selectedDirectory.value != null)
+              ? _selectedDirectoryWidget()
+              : const Text('No directory selected'),
+        ),
+      ],
+    );
+  }
+
+  Widget _selectedDirectoryWidget() {
+    return FutureBuilder<List<FileSystemHandle>>(
+      future: state.selectedDirectory.value!.entries().toList(),
+      builder: ((context, snapshot) {
+        if (snapshot.hasError) {
+          return Text('Directory Error: ${snapshot.error}');
+        }
+        if (!snapshot.hasData) {
+          return const CircularProgressIndicator();
+        }
+        final dir = state.selectedDirectory.value!;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                if (state.directoryStack.value.isNotEmpty)
+                  InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () {
+                      state.popDirectoryFromStack();
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(4.0),
+                      child: Icon(Icons.arrow_back),
+                    ),
+                  )
+                else
+                  const SizedBox(width: 32),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '"${dir.name}" - ${snapshot.data!.length} items',
+                    ),
+                  ),
+                ),
+                if (isDeleting)
+                  InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () {
+                      setState(() {
+                        handlesToDelete = null;
+                      });
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(4.0),
+                      child: Icon(Icons.close),
+                    ),
+                  )
+                else
+                  InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () async {
+                      final FileSystemCreateItemInfo? info =
+                          await showFileItemCreateDialog();
+                      if (info == null) return;
+                      state.createItemInDirectory(
+                        info.name,
+                        info.kind,
+                      );
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(4.0),
+                      child: Icon(Icons.note_add),
+                    ),
+                  ),
+                InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () {
+                    setState(() {
+                      final _handles = handlesToDelete;
+                      if (_handles != null && _handles.isNotEmpty) {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            content: Text(
+                              'Are you sure you want to delete ${_handles.length} items?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  state.deleteItems(_handles.values.toList());
+                                  setState(() {
+                                    handlesToDelete = null;
+                                  });
+                                },
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                      } else {
+                        handlesToDelete = {};
+                      }
+                    });
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(4.0),
+                    child: Icon(Icons.delete),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(),
+            if (snapshot.data!.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Empty directory',
+                ),
+              ),
+            ...snapshot.data!.map(
+              (e) => Row(
+                children: [
+                  if (handlesToDelete != null)
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: Checkbox(
+                        value: handlesToDelete!.containsKey(state.resolve(e)),
+                        onChanged: (v) {
+                          setState(() {
+                            final key = state.resolve(e);
+                            if (v == false) {
+                              handlesToDelete!.remove(key);
+                            } else {
+                              handlesToDelete![key] = e;
+                            }
+                          });
+                        },
+                      ),
+                    )
+                  else if (e is FileSystemFileHandle)
+                    IconButton(
+                      splashRadius: 18,
+                      iconSize: 18,
+                      onPressed: () async {
+                        final str = await state.selectFileForEdit(e);
+                        if (str != null && str.isNotEmpty) {
+                          textController.text = str;
+                        }
+                      },
+                      icon: const Icon(Icons.edit),
+                    )
+                  else if (e is FileSystemDirectoryHandle)
+                    IconButton(
+                      splashRadius: 18,
+                      iconSize: 18,
+                      onPressed: () {
+                        state.viewInnerDirectory(e);
+                      },
+                      icon: const Icon(Icons.folder_open),
+                    ),
+                  Expanded(
+                    child: Text('${e.name} (${e.kind.name})'),
+                  ),
+                ],
+              ),
+            )
+          ],
+        );
+      }),
+    );
+  }
+
+  Future<FileSystemCreateItemInfo?> showFileItemCreateDialog() async {
+    String name = '';
+    final kind = ValueNotifier(FileSystemHandleKind.file);
+
+    final result = await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                ),
+                onChanged: (_name) {
+                  name = _name;
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: ValueListenableBuilder<FileSystemHandleKind>(
+                  valueListenable: kind,
+                  builder: (context, value, _) {
+                    return Row(
+                      children: [
+                        const Text('File'),
+                        Radio<FileSystemHandleKind>(
+                          value: FileSystemHandleKind.file,
+                          groupValue: kind.value,
+                          onChanged: (v) {
+                            kind.value = v!;
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        const Text('Directory'),
+                        Radio<FileSystemHandleKind>(
+                          value: FileSystemHandleKind.directory,
+                          groupValue: kind.value,
+                          onChanged: (v) {
+                            kind.value = v!;
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        );
+      },
+    );
+    name = name.trim();
+    if (result != true || name.isEmpty) {
+      return null;
+    }
+    return FileSystemCreateItemInfo(name: name, kind: kind.value);
+  }
+
+  Widget _selectFilesWidget() {
+    const _headersPadding = EdgeInsets.all(3);
+    Widget _header(String text) => Padding(
+          padding: _headersPadding,
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.subtitle1,
+          ),
+        );
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Multiple'),
+                Switch(
+                  value: state.multiple.value,
+                  onChanged: (v) {
+                    state.multiple.value = v;
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(width: 10),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Only Images'),
+                Switch(
+                  value: state.onlyImages.value,
+                  onChanged: (v) {
+                    state.onlyImages.value = v;
+                  },
+                ),
+              ],
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ElevatedButton(
+            onPressed: state.selectFiles,
+            child: const Text('Select Files'),
+          ),
+        ),
+        if (state.selectedFilesDesc.value != null)
+          Table(
+            columnWidths: const {4: FixedColumnWidth(60)},
+            border: TableBorder.all(),
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: [
+              TableRow(
+                // decoration: const BoxDecoration(
+                //   border: Border.fromBorderSide(BorderSide()),
+                // ),
+                children: [
+                  _header('Name'),
+                  _header('MimeType'),
+                  _header('LastModified'),
+                  _header('Bytes'),
+                  _header('Action'),
+                ],
+              ),
+              ...state.selectedFilesDesc.value!.map(
+                (e) => TableRow(
+                  // decoration: const BoxDecoration(
+                  //   border: Border.fromBorderSide(BorderSide()),
+                  // ),
+                  children: [
+                    Text(e.name),
+                    Text(e.mimeType ?? ''),
+                    Text(e.lastModified
+                        .toIso8601String()
+                        .replaceFirst('T', '\n')),
+                    Text(e.lengthInBytes.toString()),
+                    (e.mimeType ?? '').startsWith('image/')
+                        ? Image.network(e.file.path)
+                        : InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () async {
+                              final str =
+                                  await state.selectFileForEdit(e.handle);
+                              if (str != null && str.isNotEmpty) {
+                                textController.text = str;
+                              }
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(4.0),
+                              child: Icon(Icons.edit),
+                            ),
+                          ),
+                  ]
+                      .map((e) => Padding(padding: _headersPadding, child: e))
+                      .toList(),
+                ),
+              )
+            ],
+          )
+      ],
     );
   }
+
+  Widget _currentFileWidget() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                final text = await state.selectCurrentFile(create: false);
+                if (text != null) {
+                  textController.text = text;
+                }
+              },
+              child: const Text('Edit File'),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: () async {
+                final text = await state.selectCurrentFile(create: true);
+                if (text != null && text.isNotEmpty) {
+                  textController.text = text;
+                }
+              },
+              child: const Text('Create File'),
+            ),
+          ],
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextField(
+                      controller: textController,
+                      // expands: true,
+                      maxLines: 100000,
+                      minLines: null,
+                    ),
+                  ),
+                ),
+                (state.selectedFileForSave.value != null)
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          (() {
+                            final desc = state.selectedFileForSaveDesc.value!;
+                            final _mime =
+                                desc.mimeType == null || desc.mimeType!.isEmpty
+                                    ? ''
+                                    : ' (${desc.mimeType})';
+                            return Text(
+                              '"${desc.name}"$_mime - ${desc.lengthInBytes} bytes\n${desc.lastModified}',
+                            );
+                          })(),
+                          ElevatedButton(
+                            onPressed: () =>
+                                state.saveFile(textController.text),
+                            child: const Text('Save File'),
+                          ),
+                        ],
+                      )
+                    : const Text('No file selected'),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class AppState extends ChangeNotifier {
+  AppState() {
+    _setUpListeners();
+  }
+
+  void _setUpListeners() {
+    for (final n in allNotifiers) {
+      n.addListener(notifyListeners);
+    }
+  }
+
+  late final List<AppNotifier> allNotifiers = [
+    selectedDirectory,
+    directoryStack,
+    multiple,
+    onlyImages,
+    selectedFiles,
+    selectedFilesDesc,
+    selectedFileForSave,
+    selectedFileForSaveDesc,
+    requestReadPermissions,
+    requestWritePermissions,
+  ];
+
+  final _errorsController = StreamController<String>.broadcast();
+  Stream<String> get errorsStream => _errorsController.stream;
+
+  final selectedDirectory =
+      AppNotifier<FileSystemDirectoryHandle?>('selectedDirectory', null);
+  final directoryStack =
+      AppNotifier<List<FileSystemDirectoryHandle>>('directoryStack', []);
+  final multiple = AppNotifier<bool>('multiple', true);
+  final onlyImages = AppNotifier<bool>('onlyImages', false);
+  final selectedFilesDesc =
+      AppNotifier<List<FileDescriptor>?>('selectedFilesDesc', null);
+  final selectedFiles =
+      AppNotifier<List<FileSystemFileHandle>?>('selectedFiles', null);
+  final selectedFileForSave =
+      AppNotifier<FileSystemFileHandle?>('selectedFileForSave', null);
+  final selectedFileForSaveDesc =
+      AppNotifier<FileDescriptor?>('selectedFileForSaveDesc', null);
+
+  final requestReadPermissions =
+      AppNotifier<bool>('requestReadPermissions', true);
+  final requestWritePermissions =
+      AppNotifier<bool>('requestWritePermissions', false);
+
+  @override
+  void dispose() {
+    for (final n in allNotifiers) {
+      n.removeListener(notifyListeners);
+    }
+    _errorsController.close();
+    super.dispose();
+  }
+
+  String resolve(FileSystemHandle handle) {
+    // final dir = directoryStack.value.isEmpty
+    //     ? selectedDirectory.value!
+    //     : directoryStack.value.first;
+    // return dir.resolve(possibleDescendant);
+    return <FileSystemHandle>[
+      ...directoryStack.value,
+      selectedDirectory.value!,
+      handle,
+    ].map((e) => e.name).join('/');
+  }
+
+  void createItemInDirectory(String name, FileSystemHandleKind kind) async {
+    final status = await selectedDirectory.value!.requestPermission(
+      mode: FileSystemPermissionMode.readwrite,
+    );
+
+    if (status != PermissionStateEnum.granted) {
+      _errorsController.add('Edit permission not granted');
+      return;
+    }
+
+    final Result<FileSystemHandle, GetHandleError> handleResult;
+    switch (kind) {
+      case FileSystemHandleKind.directory:
+        handleResult = await selectedDirectory.value!.getDirectoryHandle(
+          name,
+          create: true,
+        );
+        break;
+      case FileSystemHandleKind.file:
+        handleResult = await selectedDirectory.value!.getFileHandle(
+          name,
+          create: true,
+        );
+        break;
+    }
+
+    handleResult.when(
+      ok: (ok) {
+        notifyListeners();
+      },
+      err: (err) {
+        _errorsController.add(err.toString());
+      },
+    );
+  }
+
+  void popDirectoryFromStack() {
+    final copy = [...directoryStack.value];
+    selectedDirectory.value = copy.removeLast();
+    directoryStack.value = copy;
+  }
+
+  void viewInnerDirectory(FileSystemDirectoryHandle directory) {
+    final copy = [...directoryStack.value, selectedDirectory.value!];
+    directoryStack.value = copy;
+    selectedDirectory.value = directory;
+  }
+
+  void selectDirectory() async {
+    final directory = await FileSystem.instance.showDirectoryPicker();
+    if (directory == null) {
+      _errorsController.add('No directory selected');
+    } else {
+      selectedDirectory.value = directory;
+    }
+  }
+
+  void selectFiles() async {
+    final files = await FileSystem.instance.showOpenFilePicker(
+      multiple: multiple.value,
+      types: [
+        if (onlyImages.value)
+          const FilePickerAcceptType(
+            description: 'Images',
+            accept: {
+              'image/*': ['.png', '.gif', '.jpeg', '.jpg']
+            },
+          )
+      ],
+    );
+    if (files.isEmpty) {
+      _errorsController.add('No files selected');
+    } else {
+      selectedFilesDesc.value =
+          await Future.wait(files.map(FileDescriptor.fromHandle));
+      selectedFiles.value = files;
+    }
+  }
+
+  Future<String?> selectCurrentFile({required bool create}) async {
+    final fileHandle = create
+        ? await FileSystem.instance.showSaveFilePicker()
+        : await FileSystem.instance.showOpenSingleFilePicker();
+    if (fileHandle == null) {
+      _errorsController.add('No file selected');
+      return null;
+    } else {
+      return selectFileForEdit(fileHandle);
+    }
+  }
+
+  void saveFile(String text) async {
+    try {
+      final writable = await selectedFileForSave.value!.createWritable(
+        keepExistingData: false,
+      );
+      await writable.write(FileSystemWriteChunkType.string(text));
+      await writable.close();
+      selectedFileForSaveDesc.value =
+          await FileDescriptor.fromHandle(selectedFileForSave.value!);
+    } catch (e, s) {
+      selectedFileForSave.value = null;
+      selectedFileForSaveDesc.value = null;
+      _errorsController.add('Error saving file. $e $s');
+    }
+  }
+
+  Future<String?> selectFileForEdit(FileSystemFileHandle fileHandle) async {
+    final status = await fileHandle.requestPermission(
+      mode: FileSystemPermissionMode.readwrite,
+    );
+
+    if (status != PermissionStateEnum.granted) {
+      _errorsController.add('Write permission not granted');
+    } else {
+      try {
+        final file = await fileHandle.getFile();
+        final contentsStr = await file.readAsString();
+        selectedFileForSaveDesc.value =
+            await FileDescriptor.fromHandle(fileHandle);
+        selectedFileForSave.value = fileHandle;
+        return contentsStr;
+      } catch (e, s) {
+        _errorsController.add('Error opening file. $e $s');
+      }
+    }
+    return null;
+  }
+
+  void deleteItems(List<FileSystemHandle> handles) async {
+    final status = await selectedDirectory.value!.requestPermission(
+      mode: FileSystemPermissionMode.readwrite,
+    );
+
+    if (status != PermissionStateEnum.granted) {
+      _errorsController.add('Edit permission not granted');
+      return;
+    }
+    final results = await Future.wait(
+      handles.map(
+        (e) => selectedDirectory.value!.removeEntry(
+          e.name,
+          recursive: true,
+        ),
+      ),
+    );
+    final errors = results
+        .map<RemoveEntryError?>((e) => e.errOrNull)
+        .whereType<RemoveEntryError>()
+        .toList();
+    if (errors.isNotEmpty) {
+      _errorsController.add(errors.join('\n'));
+    }
+    notifyListeners();
+  }
+}
+
+class AppNotifier<T> extends ValueNotifier<T> {
+  final String name;
+
+  AppNotifier(this.name, T value) : super(value);
+}
+
+class FileDescriptor {
+  final String name;
+  final String? mimeType;
+  final DateTime lastModified;
+  final int lengthInBytes;
+  final FileSystemFileHandle handle;
+  final XFile file;
+
+  FileDescriptor({
+    required this.handle,
+    required this.file,
+    required this.lastModified,
+    required this.name,
+    required this.mimeType,
+    required this.lengthInBytes,
+  });
+
+  static Future<FileDescriptor> fromHandle(FileSystemFileHandle handle) async {
+    final file = await handle.getFile();
+
+    return FileDescriptor(
+      handle: handle,
+      file: file,
+      mimeType: file.mimeType,
+      lastModified: await file.lastModified(),
+      name: file.name,
+      lengthInBytes: await file.length(),
+    );
+  }
+}
+
+class FileSystemCreateItemInfo {
+  final String name;
+  final FileSystemHandleKind kind;
+
+  FileSystemCreateItemInfo({
+    required this.name,
+    required this.kind,
+  });
 }
