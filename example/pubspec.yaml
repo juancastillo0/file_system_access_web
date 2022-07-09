@@ -29,7 +29,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  url_launcher: ^6.1.4
   file_system_access:
     path: ..
 
