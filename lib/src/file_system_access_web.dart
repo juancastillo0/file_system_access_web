@@ -351,6 +351,7 @@ XFile _convertFileToXFile(html.File file) => XFile(
       lastModified: DateTime.fromMillisecondsSinceEpoch(
         file.lastModified ?? DateTime.now().millisecondsSinceEpoch,
       ),
+      mimeType: file.type,
     );
 
 //@class
