@@ -7,8 +7,6 @@ import 'package:file_system_access/file_system_access.dart';
 import 'package:url_launcher/link.dart';
 import 'package:idb_shim/idb_shim.dart' as idb;
 
-import 'idb/_idb_web.dart';
-
 void main() {
   runApp(const MyApp());
 }
@@ -195,13 +193,28 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _selectedDirectoryWidget() {
     return FutureBuilder<List<FileSystemHandle>>(
-      future: state.selectedDirectory.value!.entries().toList(),
+      future: state.selectedDirectoryEntries,
       builder: ((context, snapshot) {
         if (snapshot.hasError) {
-          return Text('Directory Error: ${snapshot.error}');
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(14.0),
+                child: Text('Directory Error: ${snapshot.error}'),
+              ),
+              OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    state.computeSelectedDirectoryEntries();
+                  });
+                },
+                child: const Text('Retry'),
+              )
+            ],
+          );
         }
         if (!snapshot.hasData) {
-          return const CircularProgressIndicator();
+          return const Center(child: CircularProgressIndicator());
         }
 
         return Column(
@@ -666,7 +679,7 @@ class _MyHomePageState extends State<MyHomePage> {
 class AppState extends ChangeNotifier {
   AppState() {
     _setUpListeners();
-    _setUpDb();
+    _setUpDB();
   }
 
   idb.Database? db;
@@ -696,19 +709,36 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     });
+
+    selectedDirectory.addListener(computeSelectedDirectoryEntries);
+  }
+
+  void computeSelectedDirectoryEntries() {
+    if (selectedDirectory.value == null) {
+      selectedDirectoryEntries = null;
+    } else {
+      selectedDirectoryEntries = selectedDirectory.value!
+          .requestPermission(mode: FileSystemPermissionMode.read)
+          .then((value) {
+        final dir = selectedDirectory.value;
+        if (value != PermissionStateEnum.granted || dir == null) {
+          selectedDirectory.value = null;
+          return [];
+        }
+        return dir.entries().toList();
+      });
+    }
   }
 
   static const _storeName = 'AppState';
 
-  void Function(Object)? saveFunc;
-  FileSystemPersistance? persistance;
+  static FileSystemPersistance? persistance;
 
-  void _setUpDb() async {
+  void _setUpDB() async {
     try {
-      saveFunc = await createDBWindow();
       persistance = await FileSystem.instance.getPersistance();
-      final factory = idb.idbFactoryNative;
-      final db = await factory.open(
+
+      final db = await idb.idbFactoryNative.open(
         'MainDB',
         version: 1,
         onUpgradeNeeded: (event) {
@@ -729,16 +759,16 @@ class AppState extends ChangeNotifier {
       print('fromJson json $values');
       if (values.isNotEmpty && values.first is Map) {
         final json = (values.first as Map).cast<String, Object?>();
-        populateFromJson(json);
+        await populateFromJson(json);
       }
 
       addListener(_saveInStore);
     } catch (e, s) {
-      print('_setUpDb $e $s');
+      print('_setUpDB $e $s');
     }
   }
 
-  bool populateFromJson(Map<String, Object?> value) {
+  Future<bool> populateFromJson(Map<String, Object?> value) async {
     final Map<AppNotifier, Object?> toAssign = {};
     for (final n in allNotifiers) {
       final v = value[n.name];
@@ -747,7 +777,7 @@ class AppState extends ChangeNotifier {
       final Object item;
       if (n.fromJson != null) {
         try {
-          item = n.fromJson!(v);
+          item = await n.fromJson!(v);
         } catch (e, s) {
           print('populateFromJson ${n.name} $e $s');
           return false;
@@ -783,29 +813,20 @@ class AppState extends ChangeNotifier {
       return;
     }
 
-    print('persistance!.allMap ${persistance!.getAll()}');
-    await persistance!.put(selectedDirectory.value!);
+    final json = await toJson();
+    print('persistance!.allMap ${persistance!.getAll()} json $json');
 
     final tx = db!.transaction(_storeName, idb.idbModeReadWrite);
     final objStore = tx.objectStore(_storeName);
-    final json = toJson();
-    // saveFunc!({'selectedDirectory': json['selectedDirectory'], 'key': '1'});
-    // saveFunc!(jsObjectFromMap(json['selectedDirectory']!));
-
     json['key'] = '0';
-    print(json['selectedDirectory']);
-    print('toJson json $json');
-    final jsJson = jsObjectFromMap(json);
-    print('toJson jsJson $jsJson');
-
-    await objStore.put(jsJson);
+    await objStore.put(json);
     await tx.completed;
   }
 
-  Map<String, Object?> toJson() {
+  Future<Map<String, Object?>> toJson() async {
     return Map.fromIterables(
       allNotifiers.map((e) => e.name),
-      allNotifiers.map((e) => e.toJson()),
+      await Future.wait(allNotifiers.map((e) async => e.toJson())),
       // final Object? v = e.value;
       // if (v is FileSystemDirectoryHandle) {
       //   return v.inner;
@@ -830,8 +851,15 @@ class AppState extends ChangeNotifier {
 
   static Serde<T> serdeFile<T extends FileSystemHandle?>() {
     return Serde(
-      fromJson: (inner) => FileSystem.instance.handleFromInner(inner) as T,
-      toJson: (v) => v?.inner,
+      fromJson: (inner) => FileSystem.instance
+          .getPersistance()
+          .then((p) => p.get(inner as int)?.value as T),
+      toJson: (v) => v == null
+          ? null
+          : FileSystem.instance
+              .getPersistance()
+              .then((p) => p.put(v))
+              .then((value) => value.id),
     );
   }
 
@@ -843,6 +871,7 @@ class AppState extends ChangeNotifier {
     null,
     serde: serdeFile<FileSystemDirectoryHandle?>(),
   );
+  Future<List<FileSystemHandle>>? selectedDirectoryEntries;
   final directoryStack = AppNotifier<List<FileSystemDirectoryHandle>>.fromSerde(
     'directoryStack',
     [],
@@ -1046,18 +1075,21 @@ class AppState extends ChangeNotifier {
   }
 }
 
+typedef FromJsonFn<T> = FutureOr<T> Function(Object);
+typedef ToJsonFn<T> = FutureOr<Object?> Function(T);
+
 class AppNotifier<T> extends ValueNotifier<T> {
   final String name;
-  final T Function(Object)? fromJson;
-  final Object? Function(T)? _toJson;
+  final FromJsonFn<T>? fromJson;
+  final ToJsonFn<T>? _toJson;
 
-  Object? toJson() => _toJson == null ? value : _toJson!(value);
+  FutureOr<Object?> toJson() => _toJson == null ? value : _toJson!(value);
 
   AppNotifier(
     this.name,
     T value, {
     this.fromJson,
-    Object? Function(T)? toJson,
+    ToJsonFn<T>? toJson,
   })  : _toJson = toJson,
         super(value);
 
@@ -1073,8 +1105,8 @@ class AppNotifier<T> extends ValueNotifier<T> {
 }
 
 class Serde<T> {
-  final T Function(Object)? fromJson;
-  final Object? Function(T)? toJson;
+  final FromJsonFn<T>? fromJson;
+  final ToJsonFn<T>? toJson;
 
   const Serde({
     this.fromJson,
@@ -1085,10 +1117,18 @@ class Serde<T> {
     return Serde(
       fromJson: fromJson == null
           ? null
-          : (v) => (v as List)
-              .map((e) => (e == null ? null : fromJson!(e)) as T)
-              .toList() as L,
-      toJson: toJson == null ? null : (v) => v?.map(toJson!).toList(),
+          : (v) => Future.wait(
+                (v as List).map(
+                  (e) async => (e == null ? null : fromJson!(e)) as FutureOr<T>,
+                ),
+              ) as Future<L>,
+      toJson: toJson == null
+          ? null
+          : (v) => v == null
+              ? null
+              : Future.wait(
+                  v.map((d) async => toJson!(d)),
+                ),
     );
   }
 }
