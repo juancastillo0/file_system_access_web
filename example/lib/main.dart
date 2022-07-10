@@ -997,10 +997,10 @@ class AppState extends ChangeNotifier {
         break;
     }
 
+    computeSelectedDirectoryEntries();
+    notifyListeners();
     handleResult.when(
-      ok: (ok) {
-        notifyListeners();
-      },
+      ok: (ok) {},
       err: (err) {
         _errorsController.add(err.toString());
       },
@@ -1124,6 +1124,7 @@ class AppState extends ChangeNotifier {
     if (errors.isNotEmpty) {
       _errorsController.add(errors.join('\n'));
     }
+    computeSelectedDirectoryEntries();
     notifyListeners();
   }
 }
