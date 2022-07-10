@@ -12,9 +12,6 @@ import 'dart:js_util';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:file_system_access/file_system_access.dart';
-import 'package:file_system_access/src/file_system_access_interface.dart';
-import 'package:file_system_access/src/models/result.dart';
-import 'package:file_system_access/src/models/write_chunk_type.dart';
 import 'package:file_system_access/src/utils.dart';
 import 'package:js/js.dart';
 
@@ -96,7 +93,7 @@ abstract class _FileSystemHandle {
 
 abstract class _FileSystemHandleJS implements FileSystemHandle {
   const _FileSystemHandleJS(this.inner);
-  @override
+
   final _FileSystemHandle inner;
 
   @override
@@ -343,6 +340,11 @@ class FileSystemFileHandleJS extends _FileSystemHandleJS
       _ptf(_inner.createWritable(_FileSystemCreateWritableOptions(
               keepExistingData: keepExistingData)))
           .then((value) => FileSystemWritableFileStreamJS(value));
+
+  @override
+  String toString() {
+    return 'FileSystemFileHandle(kind: file, name: "$name")';
+  }
 }
 
 XFile _convertFileToXFile(html.File file) => XFile(
@@ -532,6 +534,11 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
   @override
   Future<List<String>?> resolve(FileSystemHandle possibleDescendant) =>
       _pltfNull(_inner.resolve(possibleDescendant));
+
+  @override
+  String toString() {
+    return 'FileSystemDirectoryHandle(kind: directory, name: "$name")';
+  }
 }
 
 // @JS()
@@ -625,15 +632,19 @@ class _FileSystemPersistanceItemJS implements FileSystemPersistanceItem {
 
   @override
   int get id => inner.id;
+
   @override
-  FileSystemHandle get value =>
-      FileSystem.instance.handleFromInner(inner.value);
+  late final FileSystemHandle value = inner.value.kind ==
+          FileSystemHandleKind.directory.name
+      ? FileSystemDirectoryHandleJS(inner.value as _FileSystemDirectoryHandle)
+      : FileSystemFileHandleJS(inner.value as _FileSystemFileHandle);
+
   @override
   DateTime get savedDate => inner.savedDate;
 
   @override
   String toString() {
-    return inner.toString();
+    return 'FileSystemPersistanceItem(id: $id, value: $value, savedDate: $savedDate)';
   }
 }
 

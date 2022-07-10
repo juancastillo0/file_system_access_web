@@ -5,9 +5,6 @@ import 'package:file_system_access/file_system_access.dart';
 
 abstract class FileSystemHandleIo extends FileSystemHandle {
   @override
-  FileSystemHandle get inner => this;
-
-  @override
   Future<PermissionStateEnum> queryPermission(
       {FileSystemPermissionMode? mode}) async {
     return PermissionStateEnum.granted;
@@ -332,11 +329,6 @@ class FileSystem extends FileSystemI {
   }) async {
     final file = await FileSelectorPlatform.instance.openFile();
     return file != null ? FileSystemFileHandleIo(file) : null;
-  }
-
-  @override
-  FileSystemHandle handleFromInner(Object inner) {
-    return inner as FileSystemHandle;
   }
 
   @override

@@ -74,7 +74,7 @@ class DirectorySyncStats {
   }
 }
 
-class DirectorySyncronizer {
+class DirectorySynchronizer {
   FileSystemDirectoryHandle? _directoryHandle;
   FileSystemDirectoryHandle? get directoryHandle => _directoryHandle;
 
@@ -82,7 +82,7 @@ class DirectorySyncronizer {
   Duration? syncDuration;
   Timer? _timer;
 
-  DirectorySyncronizer({
+  DirectorySynchronizer({
     required this.getSerializedEntities,
     this.syncDuration,
   }) {

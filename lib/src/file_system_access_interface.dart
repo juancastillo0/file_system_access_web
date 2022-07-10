@@ -11,8 +11,6 @@ enum PermissionStateEnum { granted, denied, prompt }
 
 /// https://developer.mozilla.org/docs/Web/API/FileSystemHandle
 abstract class FileSystemHandle {
-  Object get inner;
-
   Future<bool> isSameEntry(FileSystemHandle other);
 
   FileSystemHandleKind get kind;
@@ -69,7 +67,7 @@ abstract class FileSystemFileHandle extends FileSystemHandle {
   Future<XFile> getFile();
 
   /// throws NotAllowedError if
-  /// FileSystemPermissionMode.readwriteis not granted
+  /// FileSystemPermissionMode.readwrite is not granted
   Future<FileSystemWritableFileStream> createWritable({bool? keepExistingData});
 }
 
@@ -226,21 +224,19 @@ abstract class FileSystemI {
     }
     final serDir = await SerializedDirectory.fromHandle(handle);
 
-    final _syncronizer = DirectorySyncronizer(
+    final _synchronizer = DirectorySynchronizer(
       getSerializedEntities: () => serDir.entities,
     );
-    final success = await _syncronizer.selectDirectory(newHandle);
+    final success = await _synchronizer.selectDirectory(newHandle);
     if (success) {
-      final result = await _syncronizer.saveEntities();
-      await _syncronizer.dispose();
+      final result = await _synchronizer.saveEntities();
+      await _synchronizer.dispose();
       return Ok(result);
     } else {
-      await _syncronizer.dispose();
+      await _synchronizer.dispose();
       return const Err(null);
     }
   }
-
-  FileSystemHandle handleFromInner(Object inner);
 
   Future<FileSystemPersistance> getPersistance();
 }
