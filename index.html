@@ -31,9 +31,24 @@
 
     <title>File System Access</title>
     <link rel="manifest" href="manifest.json" />
-    <script src="./packages/file_system_access/assets/file_persistence.js"></script>
+    <script src="./assets/packages/file_system_access/assets/file_persistence.js"></script>
+
+    <style>
+      html, body {
+        margin: 0px;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
   </head>
   <body>
+    <div style="display:flex;align-items: center;justify-content: center;height: 100%;width: 100%;">
+      <img src="./icons/Icon-192.png" alt="Flutter" width="64px" height="64px">
+      <div style="display:flex;flex-direction:column;align-items: center;justify-content: center;">
+        <h1 style="color:black;font:28px sans-serif;margin:0;">File System Access Dart</h1>
+        <h4 style="color:black;font:18px sans-serif;margin:0;">viewer and editor demo</h4>
+      </div>
+    </div>
     <script>
       window.createDB = () => {
         return new Promise((resolve, reject) => {
@@ -79,7 +94,7 @@
        application. For more information, see:
        https://developers.google.com/web/fundamentals/primers/service-workers -->
     <script>
-      var serviceWorkerVersion = '683584205';
+      var serviceWorkerVersion = '3385145707';
       var scriptLoaded = false;
       function loadMainDartJs() {
         if (scriptLoaded) {
