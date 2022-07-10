@@ -7,6 +7,12 @@ import 'package:file_system_access/src/models/serialized_entity.dart';
 import 'package:file_system_access/src/models/sync.dart';
 import 'package:file_system_access/src/models/write_chunk_type.dart';
 
+/// If the state of the read permission of this handle is anything
+/// other than "prompt", this will return that state directly.
+/// If it is "prompt" however, user activation is needed and
+/// this will show a confirmation prompt to the user.
+/// The new read permission state is then returned,
+/// depending on the user’s response to the prompt.
 enum PermissionStateEnum { granted, denied, prompt }
 
 /// https://developer.mozilla.org/docs/Web/API/FileSystemHandle
@@ -24,6 +30,23 @@ abstract class FileSystemHandle {
   Future<PermissionStateEnum> requestPermission({
     FileSystemPermissionMode? mode,
   });
+
+  // TODO: keep improving
+  Future<Result<PermissionStateEnum, Object>> requestPermissionActivation({
+    FileSystemPermissionMode? mode,
+  }) async {
+    try {
+      final state = await requestPermission(mode: mode);
+      return Ok(state);
+    } catch (e) {
+      if (e.toString().contains(
+            'SecurityError: User activation is required to request permissions',
+          )) {
+        return const Ok(PermissionStateEnum.prompt);
+      }
+      return Err(e);
+    }
+  }
 }
 
 /// https://developer.mozilla.org/docs/Web/API/window/showOpenFilePicker

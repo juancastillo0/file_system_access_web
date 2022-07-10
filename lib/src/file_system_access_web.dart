@@ -91,8 +91,8 @@ abstract class _FileSystemHandle {
   // readonly isDirectory: this['kind'] extends 'directory' ? true : false;
 }
 
-abstract class _FileSystemHandleJS implements FileSystemHandle {
-  const _FileSystemHandleJS(this.inner);
+abstract class _FileSystemHandleJS extends FileSystemHandle {
+  _FileSystemHandleJS(this.inner);
 
   final _FileSystemHandle inner;
 
@@ -127,6 +127,11 @@ abstract class _FileSystemHandleJS implements FileSystemHandle {
           mode: mode == null ? null : mode.toString().split('.')[1],
         ),
       )).then((value) => parseEnum(value, PermissionStateEnum.values)!);
+
+  @override
+  String toString() {
+    return 'FileSystemHandle(kind: ${inner.kind}, name: "$name")';
+  }
 }
 
 @JS()
@@ -324,7 +329,7 @@ abstract class _FileSystemFileHandle extends _FileSystemHandle {
 
 class FileSystemFileHandleJS extends _FileSystemHandleJS
     implements FileSystemFileHandle {
-  const FileSystemFileHandleJS(_FileSystemFileHandle inner) : super(inner);
+  FileSystemFileHandleJS(_FileSystemFileHandle inner) : super(inner);
   _FileSystemFileHandle get _inner => inner as _FileSystemFileHandle;
 
   @override
@@ -340,11 +345,6 @@ class FileSystemFileHandleJS extends _FileSystemHandleJS
       _ptf(_inner.createWritable(_FileSystemCreateWritableOptions(
               keepExistingData: keepExistingData)))
           .then((value) => FileSystemWritableFileStreamJS(value));
-
-  @override
-  String toString() {
-    return 'FileSystemFileHandle(kind: file, name: "$name")';
-  }
 }
 
 XFile _convertFileToXFile(html.File file) => XFile(
@@ -425,8 +425,7 @@ RemoveEntryError _mapRemoveEntryError(
 
 class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
     implements FileSystemDirectoryHandle {
-  const FileSystemDirectoryHandleJS(_FileSystemDirectoryHandle inner)
-      : super(inner);
+  FileSystemDirectoryHandleJS(_FileSystemDirectoryHandle inner) : super(inner);
   _FileSystemDirectoryHandle get _inner => inner as _FileSystemDirectoryHandle;
 
   @override
@@ -534,11 +533,6 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
   @override
   Future<List<String>?> resolve(FileSystemHandle possibleDescendant) =>
       _pltfNull(_inner.resolve(possibleDescendant));
-
-  @override
-  String toString() {
-    return 'FileSystemDirectoryHandle(kind: directory, name: "$name")';
-  }
 }
 
 // @JS()
@@ -618,11 +612,6 @@ class _FileSystemPersistanceJS implements FileSystemPersistance {
   //   .map((key, value) => MapEntry(key, _FileSystemPersistanceItemJS(value)));
 
   List<int> keys() => inner.keys();
-
-  @override
-  String toString() {
-    return inner.toString();
-  }
 }
 
 class _FileSystemPersistanceItemJS implements FileSystemPersistanceItem {

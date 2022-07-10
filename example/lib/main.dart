@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
+import 'package:idb_shim/idb_shim.dart' as idb;
+import 'package:url_launcher/link.dart';
 
 import 'package:file_system_access/file_system_access.dart';
-import 'package:url_launcher/link.dart';
-import 'package:idb_shim/idb_shim.dart' as idb;
 
 void main() {
   runApp(const MyApp());
@@ -46,6 +46,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Map<String, FileSystemHandle>? handlesToDelete;
 
   StreamSubscription<String>? _errorSubs;
+  StreamSubscription<String>? _editingFileTextSubs;
 
   _onUpdate() {
     setState(() {});
@@ -73,11 +74,16 @@ class _MyHomePageState extends State<MyHomePage> {
 
       controller = ScaffoldMessenger.of(context).showSnackBar(snackbar);
     });
+
+    _editingFileTextSubs = state.editingFileTextStream.listen((event) {
+      textController.text = event;
+    });
   }
 
   @override
   void dispose() {
     _errorSubs?.cancel();
+    _editingFileTextSubs?.cancel();
     state.removeListener(_onUpdate);
     super.dispose();
   }
@@ -200,16 +206,16 @@ class _MyHomePageState extends State<MyHomePage> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(14.0),
-                child: Text('Directory Error: ${snapshot.error}'),
+                child: Text('Directory Error - ${snapshot.error}'),
               ),
               OutlinedButton(
                 onPressed: () {
                   setState(() {
-                    state.computeSelectedDirectoryEntries();
+                    state.computeEverything();
                   });
                 },
                 child: const Text('Retry'),
-              )
+              ),
             ],
           );
         }
@@ -258,11 +264,8 @@ class _MyHomePageState extends State<MyHomePage> {
                           IconButton(
                             splashRadius: 18,
                             iconSize: 18,
-                            onPressed: () async {
-                              final str = await state.selectFileForEdit(e);
-                              if (str != null && str.isNotEmpty) {
-                                textController.text = str;
-                              }
+                            onPressed: () {
+                              state.selectFileForEdit(e);
                             },
                             icon: const Icon(Icons.edit),
                           )
@@ -518,7 +521,11 @@ class _MyHomePageState extends State<MyHomePage> {
             child: const Text('Select Files'),
           ),
         ),
-        if (state.selectedFilesDesc != null)
+        if (state.selectedFilesDesc == null)
+          const SizedBox()
+        else if (state.selectedFilesDesc!.value == null)
+          requestUserActivationWidget(state.selectedFilesDesc!)
+        else
           Expanded(
             child: SingleChildScrollView(
               child: Table(
@@ -541,7 +548,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       _header('Action'),
                     ],
                   ),
-                  ...state.selectedFilesDesc!.map(
+                  ...state.selectedFilesDesc!.value!.map(
                     (e) => TableRow(
                       // decoration: const BoxDecoration(
                       //   border: Border.fromBorderSide(BorderSide()),
@@ -575,12 +582,8 @@ class _MyHomePageState extends State<MyHomePage> {
                               )
                             : InkWell(
                                 customBorder: const CircleBorder(),
-                                onTap: () async {
-                                  final str =
-                                      await state.selectFileForEdit(e.handle);
-                                  if (str != null && str.isNotEmpty) {
-                                    textController.text = str;
-                                  }
+                                onTap: () {
+                                  state.selectFileForEdit(e.handle);
                                 },
                                 child: const Padding(
                                   padding: EdgeInsets.all(4.0),
@@ -609,21 +612,15 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
-              onPressed: () async {
-                final text = await state.selectCurrentFile(create: false);
-                if (text != null) {
-                  textController.text = text;
-                }
+              onPressed: () {
+                state.selectCurrentFile(create: false);
               },
               child: const Text('Edit File'),
             ),
             const SizedBox(width: 10),
             ElevatedButton(
-              onPressed: () async {
-                final text = await state.selectCurrentFile(create: true);
-                if (text != null && text.isNotEmpty) {
-                  textController.text = text;
-                }
+              onPressed: () {
+                state.selectCurrentFile(create: true);
               },
               child: const Text('Create File'),
             ),
@@ -650,7 +647,11 @@ class _MyHomePageState extends State<MyHomePage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           (() {
-                            final desc = state.selectedFileForSaveDesc!;
+                            final result = state.selectedFileForSaveDesc!;
+                            final desc = result.value;
+                            if (desc == null) {
+                              return requestUserActivationWidget(result);
+                            }
                             final _mime =
                                 desc.mimeType == null || desc.mimeType!.isEmpty
                                     ? ''
@@ -674,6 +675,27 @@ class _MyHomePageState extends State<MyHomePage> {
       ],
     );
   }
+
+  Widget requestUserActivationWidget(
+    FileSystemItemsStatus result,
+  ) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(14.0),
+          child: Text(
+            'Keep ${result.mode == FileSystemPermissionMode.readwrite ? 'editing' : 'viewing'}'
+            ' ${result.items.take(5).map((e) => '"${e.name}" (${e.kind.name})').join(', ')}'
+            '${result.items.length > 5 ? ' and ${result.items.length - 5} more.' : ''}',
+          ),
+        ),
+        OutlinedButton(
+          onPressed: state.computeEverything,
+          child: const Text('Retry'),
+        ),
+      ],
+    );
+  }
 }
 
 class AppState extends ChangeNotifier {
@@ -689,28 +711,52 @@ class AppState extends ChangeNotifier {
       n.addListener(notifyListeners);
     }
 
-    selectedFiles.addListener(() async {
-      if (selectedFiles.value == null) {
-        selectedFilesDesc = null;
-      } else {
-        selectedFilesDesc = await Future.wait(
-          selectedFiles.value!.map(FileDescriptor.fromHandle),
-        );
-        notifyListeners();
-      }
-    });
-
-    selectedFileForSave.addListener(() async {
-      if (selectedFileForSave.value == null) {
-        selectedFileForSaveDesc = null;
-      } else {
-        selectedFileForSaveDesc =
-            await FileDescriptor.fromHandle(selectedFileForSave.value!);
-        notifyListeners();
-      }
-    });
-
+    selectedFiles.addListener(computeSelectedFilesDesc);
+    selectedFileForSave.addListener(computeSelectedFileForSaveDesc);
     selectedDirectory.addListener(computeSelectedDirectoryEntries);
+    editingFileTextStream.listen((event) {
+      _editingFileTextLastValue = event;
+    });
+  }
+
+  void computeEverything() {
+    computeSelectedFilesDesc();
+    computeSelectedFileForSaveDesc();
+    computeSelectedDirectoryEntries();
+  }
+
+  void computeSelectedFilesDesc() async {
+    if (selectedFiles.value == null) {
+      selectedFilesDesc = null;
+    } else {
+      selectedFilesDesc = await FileSystemItemsStatus.validate(
+        compute: () => Future.wait(
+          selectedFiles.value!.map(FileDescriptor.fromHandle),
+        ),
+        items: selectedFiles.value!,
+        mode: FileSystemPermissionMode.read,
+      );
+      notifyListeners();
+    }
+  }
+
+  void computeSelectedFileForSaveDesc() async {
+    if (selectedFileForSave.value == null) {
+      selectedFileForSaveDesc = null;
+    } else {
+      selectedFileForSaveDesc = await FileSystemItemsStatus.validate(
+        compute: () async {
+          final v = await FileDescriptor.fromHandle(selectedFileForSave.value!);
+          if (_editingFileTextLastValue == null) {
+            _editingFileTextController.add(await v.file.readAsString());
+          }
+          return v;
+        },
+        items: [selectedFileForSave.value!],
+        mode: FileSystemPermissionMode.readwrite,
+      );
+      notifyListeners();
+    }
   }
 
   void computeSelectedDirectoryEntries() {
@@ -814,8 +860,6 @@ class AppState extends ChangeNotifier {
     }
 
     final json = await toJson();
-    print('persistance!.allMap ${persistance!.getAll()} json $json');
-
     final tx = db!.transaction(_storeName, idb.idbModeReadWrite);
     final objStore = tx.objectStore(_storeName);
     json['key'] = '0';
@@ -866,6 +910,10 @@ class AppState extends ChangeNotifier {
   final _errorsController = StreamController<String>.broadcast();
   Stream<String> get errorsStream => _errorsController.stream;
 
+  final _editingFileTextController = StreamController<String>.broadcast();
+  String? _editingFileTextLastValue;
+  Stream<String> get editingFileTextStream => _editingFileTextController.stream;
+
   final selectedDirectory = AppNotifier<FileSystemDirectoryHandle?>.fromSerde(
     'selectedDirectory',
     null,
@@ -880,7 +928,7 @@ class AppState extends ChangeNotifier {
   );
   final multiple = AppNotifier<bool>('multiple', true);
   final onlyImages = AppNotifier<bool>('onlyImages', false);
-  List<FileDescriptor>? selectedFilesDesc;
+  FileSystemItemsStatus<List<FileDescriptor>>? selectedFilesDesc;
   final selectedFiles = AppNotifier<List<FileSystemFileHandle>?>.fromSerde(
     'selectedFiles',
     null,
@@ -892,7 +940,7 @@ class AppState extends ChangeNotifier {
     null,
     serde: serdeFile<FileSystemFileHandle?>(),
   );
-  FileDescriptor? selectedFileForSaveDesc;
+  FileSystemItemsStatus<FileDescriptor>? selectedFileForSaveDesc;
 
   final requestReadPermissions =
       AppNotifier<bool>('requestReadPermissions', true);
@@ -906,6 +954,7 @@ class AppState extends ChangeNotifier {
       n.dispose();
     }
     _errorsController.close();
+    _editingFileTextController.close();
     removeListener(_saveInStore);
     super.dispose();
   }
@@ -999,7 +1048,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<String?> selectCurrentFile({required bool create}) async {
+  void selectCurrentFile({required bool create}) async {
     final fileHandle = create
         ? await FileSystem.instance.showSaveFilePicker()
         : await FileSystem.instance.showOpenSingleFilePicker();
@@ -1007,7 +1056,7 @@ class AppState extends ChangeNotifier {
       _errorsController.add('No file selected');
       return null;
     } else {
-      return selectFileForEdit(fileHandle);
+      selectFileForEdit(fileHandle, created: create);
     }
   }
 
@@ -1018,8 +1067,7 @@ class AppState extends ChangeNotifier {
       );
       await writable.write(FileSystemWriteChunkType.string(text));
       await writable.close();
-      selectedFileForSaveDesc =
-          await FileDescriptor.fromHandle(selectedFileForSave.value!);
+      computeSelectedFileForSaveDesc();
       notifyListeners();
     } catch (e, s) {
       selectedFileForSave.value = null;
@@ -1027,7 +1075,10 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<String?> selectFileForEdit(FileSystemFileHandle fileHandle) async {
+  void selectFileForEdit(
+    FileSystemFileHandle fileHandle, {
+    bool created = false,
+  }) async {
     final status = await fileHandle.requestPermission(
       mode: FileSystemPermissionMode.readwrite,
     );
@@ -1036,10 +1087,12 @@ class AppState extends ChangeNotifier {
       _errorsController.add('Write permission not granted');
     } else {
       try {
-        final file = await fileHandle.getFile();
-        final contentsStr = await file.readAsString();
+        if (!created) {
+          final file = await fileHandle.getFile();
+          final contentsStr = await file.readAsString();
+          _editingFileTextController.add(contentsStr);
+        }
         selectedFileForSave.value = fileHandle;
-        return contentsStr;
       } catch (e, s) {
         _errorsController.add('Error opening file. $e $s');
       }
@@ -1185,4 +1238,48 @@ class FileSystemCreateItemInfo {
     required this.name,
     required this.kind,
   });
+}
+
+class FileSystemItemsStatus<T> {
+  final List<FileSystemHandle> items;
+  final PermissionStateEnum permission;
+  final T? value;
+  final FileSystemPermissionMode mode;
+
+  FileSystemItemsStatus({
+    required this.mode,
+    required this.items,
+    required this.permission,
+    this.value,
+  });
+
+  static Future<FileSystemItemsStatus<T>> validate<T>({
+    required List<FileSystemHandle> items,
+    required FileSystemPermissionMode mode,
+    required FutureOr<T> Function() compute,
+  }) async {
+    final permissions = await Future.wait(
+      items.map((e) => e.requestPermissionActivation(mode: mode)),
+    );
+    final denied = permissions
+        .any((element) => element.okOrNull == PermissionStateEnum.denied);
+    final prompt = permissions.any((element) =>
+        element.isErr || element.okOrNull == PermissionStateEnum.prompt);
+    final permission = denied
+        ? PermissionStateEnum.denied
+        : prompt
+            ? PermissionStateEnum.prompt
+            : PermissionStateEnum.granted;
+
+    T? value;
+    if (permission == PermissionStateEnum.granted) {
+      value = await compute();
+    }
+    return FileSystemItemsStatus(
+      items: items,
+      mode: mode,
+      permission: permission,
+      value: value,
+    );
+  }
 }
