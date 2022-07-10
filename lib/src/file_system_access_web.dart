@@ -96,6 +96,7 @@ abstract class _FileSystemHandle {
 
 abstract class _FileSystemHandleJS implements FileSystemHandle {
   const _FileSystemHandleJS(this.inner);
+  @override
   final _FileSystemHandle inner;
 
   @override
@@ -558,6 +559,84 @@ external _Promise<_FileSystemFileHandle> _showSaveFilePicker(
 @JS('showDirectoryPicker')
 external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker();
 
+@JS('getSavedFileSystemHandle')
+external _Promise<_FileSystemPersistance> _getSavedFileSystemHandle();
+
+@JS()
+@anonymous
+abstract class _FileSystemPersistance {
+  external _FileSystemPersistanceItem? get(int id);
+  external List<_FileSystemPersistanceItem> getAll();
+  external _Promise<_FileSystemPersistanceItem?> delete(int id);
+  external _Promise<_FileSystemPersistanceItem> put(_FileSystemHandle handle);
+  // external Map<int, _FileSystemPersistanceItem> get allMap;
+  external List<int> keys();
+}
+
+@JS()
+@anonymous
+abstract class _FileSystemPersistanceItem {
+  external int get id;
+  external _FileSystemHandle get value;
+  external DateTime get savedDate;
+}
+
+class _FileSystemPersistanceJS implements FileSystemPersistance {
+  final _FileSystemPersistance inner;
+
+  _FileSystemPersistanceJS(this.inner);
+
+  @override
+  _FileSystemPersistanceItemJS? get(int id) {
+    final value = inner.get(id);
+    return value == null ? null : _FileSystemPersistanceItemJS(value);
+  }
+
+  @override
+  List<_FileSystemPersistanceItemJS> getAll() =>
+      inner.getAll().map((e) => _FileSystemPersistanceItemJS(e)).toList();
+
+  @override
+  Future<_FileSystemPersistanceItemJS?> delete(int id) =>
+      _ptf(inner.delete(id)).then((value) {
+        return value == null ? null : _FileSystemPersistanceItemJS(value);
+      });
+
+  @override
+  Future<_FileSystemPersistanceItemJS> put(FileSystemHandle handle) =>
+      _ptf(inner.put((handle as _FileSystemHandleJS).inner))
+          .then((value) => _FileSystemPersistanceItemJS(value));
+
+  // Map<int, _FileSystemPersistanceItemJS> get allMap => inner.allMap
+  //   .map((key, value) => MapEntry(key, _FileSystemPersistanceItemJS(value)));
+
+  List<int> keys() => inner.keys();
+
+  @override
+  String toString() {
+    return inner.toString();
+  }
+}
+
+class _FileSystemPersistanceItemJS implements FileSystemPersistanceItem {
+  final _FileSystemPersistanceItem inner;
+
+  _FileSystemPersistanceItemJS(this.inner);
+
+  @override
+  int get id => inner.id;
+  @override
+  FileSystemHandle get value =>
+      FileSystem.instance.handleFromInner(inner.value);
+  @override
+  DateTime get savedDate => inner.savedDate;
+
+  @override
+  String toString() {
+    return inner.toString();
+  }
+}
+
 class FileSystem extends FileSystemI {
   const FileSystem._();
 
@@ -655,6 +734,17 @@ class FileSystem extends FileSystemI {
         }
         throw error;
       });
+
+  @override
+  FileSystemHandle handleFromInner(Object inner) {
+    if (inner is _FileSystemFileHandle) return FileSystemFileHandleJS(inner);
+    return FileSystemDirectoryHandleJS(inner as _FileSystemDirectoryHandle);
+  }
+
+  @override
+  Future<FileSystemPersistance> getPersistance() =>
+      _ptf(_getSavedFileSystemHandle())
+          .then((value) => _FileSystemPersistanceJS(value));
 }
 
 List<_FilePickerAcceptTypeJS>? _mapFilePickerTypes(

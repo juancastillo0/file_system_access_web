@@ -11,6 +11,8 @@ enum PermissionStateEnum { granted, denied, prompt }
 
 /// https://developer.mozilla.org/docs/Web/API/FileSystemHandle
 abstract class FileSystemHandle {
+  Object get inner;
+
   Future<bool> isSameEntry(FileSystemHandle other);
 
   FileSystemHandleKind get kind;
@@ -195,7 +197,7 @@ abstract class FileSystemI {
   /// Exception AbortError
   Future<FileSystemDirectoryHandle?> showDirectoryPicker();
 
-  /// Utility function for querying and requesting 
+  /// Utility function for querying and requesting
   /// permission if it hasn't been granted
   Future<bool> verifyPermission(
     FileSystemHandle fileHandle, {
@@ -237,4 +239,22 @@ abstract class FileSystemI {
       return const Err(null);
     }
   }
+
+  FileSystemHandle handleFromInner(Object inner);
+
+  Future<FileSystemPersistance> getPersistance();
+}
+
+abstract class FileSystemPersistance {
+  FileSystemPersistanceItem? get(int id);
+  Future<FileSystemPersistanceItem?> delete(int id);
+  Future<FileSystemPersistanceItem> put(FileSystemHandle handle);
+  // Map<int, FileSystemPersistanceItem> get allMap;
+  List<FileSystemPersistanceItem> getAll();
+}
+
+abstract class FileSystemPersistanceItem {
+  int get id;
+  FileSystemHandle get value;
+  DateTime get savedDate;
 }

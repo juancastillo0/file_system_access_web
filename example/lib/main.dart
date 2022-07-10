@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 
 import 'package:file_system_access/file_system_access.dart';
 import 'package:url_launcher/link.dart';
-import 'package:url_launcher/url_launcher_string.dart';
+import 'package:idb_shim/idb_shim.dart' as idb;
+
+import 'idb/_idb_web.dart';
 
 void main() {
   runApp(const MyApp());
@@ -664,7 +666,10 @@ class _MyHomePageState extends State<MyHomePage> {
 class AppState extends ChangeNotifier {
   AppState() {
     _setUpListeners();
+    _setUpDb();
   }
+
+  idb.Database? db;
 
   void _setUpListeners() {
     for (final n in allNotifiers) {
@@ -693,6 +698,125 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  static const _storeName = 'AppState';
+
+  void Function(Object)? saveFunc;
+  FileSystemPersistance? persistance;
+
+  void _setUpDb() async {
+    try {
+      saveFunc = await createDBWindow();
+      persistance = await FileSystem.instance.getPersistance();
+      final factory = idb.idbFactoryNative;
+      final db = await factory.open(
+        'MainDB',
+        version: 1,
+        onUpgradeNeeded: (event) {
+          event.database.createObjectStore(
+            _storeName,
+            keyPath: 'key',
+            autoIncrement: false,
+          );
+        },
+      );
+      this.db = db;
+
+      final tx = db.transaction(_storeName, idb.idbModeReadOnly);
+      final objStore = tx.objectStore(_storeName);
+      final values = await objStore.getAll();
+      await tx.completed;
+
+      print('fromJson json $values');
+      if (values.isNotEmpty && values.first is Map) {
+        final json = (values.first as Map).cast<String, Object?>();
+        populateFromJson(json);
+      }
+
+      addListener(_saveInStore);
+    } catch (e, s) {
+      print('_setUpDb $e $s');
+    }
+  }
+
+  bool populateFromJson(Map<String, Object?> value) {
+    final Map<AppNotifier, Object?> toAssign = {};
+    for (final n in allNotifiers) {
+      final v = value[n.name];
+      if (v == null) continue;
+
+      final Object item;
+      if (n.fromJson != null) {
+        try {
+          item = n.fromJson!(v);
+        } catch (e, s) {
+          print('populateFromJson ${n.name} $e $s');
+          return false;
+        }
+      } else {
+        item = v;
+      }
+      if (n.canAssign(item)) {
+        toAssign[n] = item;
+      } else {
+        print('!n.canAssign(item) ${n.name} item: $item');
+        return false;
+      }
+    }
+    toAssign.forEach((key, value) {
+      key.value = value;
+    });
+
+    return true;
+  }
+
+  Timer? _saveInStoreTimer;
+
+  Future<void> _saveInStore({bool throttle = true}) async {
+    if (throttle) {
+      _saveInStoreTimer ??= Timer(
+        const Duration(seconds: 3),
+        () async {
+          await _saveInStore(throttle: false);
+          _saveInStoreTimer = null;
+        },
+      );
+      return;
+    }
+
+    print('persistance!.allMap ${persistance!.getAll()}');
+    await persistance!.put(selectedDirectory.value!);
+
+    final tx = db!.transaction(_storeName, idb.idbModeReadWrite);
+    final objStore = tx.objectStore(_storeName);
+    final json = toJson();
+    // saveFunc!({'selectedDirectory': json['selectedDirectory'], 'key': '1'});
+    // saveFunc!(jsObjectFromMap(json['selectedDirectory']!));
+
+    json['key'] = '0';
+    print(json['selectedDirectory']);
+    print('toJson json $json');
+    final jsJson = jsObjectFromMap(json);
+    print('toJson jsJson $jsJson');
+
+    await objStore.put(jsJson);
+    await tx.completed;
+  }
+
+  Map<String, Object?> toJson() {
+    return Map.fromIterables(
+      allNotifiers.map((e) => e.name),
+      allNotifiers.map((e) => e.toJson()),
+      // final Object? v = e.value;
+      // if (v is FileSystemDirectoryHandle) {
+      //   return v.inner;
+      // } else if (v is List<FileSystemDirectoryHandle>) {
+      //   return v.map((e) => e.inner).toList();
+      // }
+      // return v;
+      // }),
+    );
+  }
+
   late final List<AppNotifier> allNotifiers = [
     selectedDirectory,
     directoryStack,
@@ -704,20 +828,41 @@ class AppState extends ChangeNotifier {
     requestWritePermissions,
   ];
 
+  static Serde<T> serdeFile<T extends FileSystemHandle?>() {
+    return Serde(
+      fromJson: (inner) => FileSystem.instance.handleFromInner(inner) as T,
+      toJson: (v) => v?.inner,
+    );
+  }
+
   final _errorsController = StreamController<String>.broadcast();
   Stream<String> get errorsStream => _errorsController.stream;
 
-  final selectedDirectory =
-      AppNotifier<FileSystemDirectoryHandle?>('selectedDirectory', null);
-  final directoryStack =
-      AppNotifier<List<FileSystemDirectoryHandle>>('directoryStack', []);
+  final selectedDirectory = AppNotifier<FileSystemDirectoryHandle?>.fromSerde(
+    'selectedDirectory',
+    null,
+    serde: serdeFile<FileSystemDirectoryHandle?>(),
+  );
+  final directoryStack = AppNotifier<List<FileSystemDirectoryHandle>>.fromSerde(
+    'directoryStack',
+    [],
+    serde: serdeFile<FileSystemDirectoryHandle>()
+        .list<List<FileSystemDirectoryHandle>>(),
+  );
   final multiple = AppNotifier<bool>('multiple', true);
   final onlyImages = AppNotifier<bool>('onlyImages', false);
   List<FileDescriptor>? selectedFilesDesc;
-  final selectedFiles =
-      AppNotifier<List<FileSystemFileHandle>?>('selectedFiles', null);
-  final selectedFileForSave =
-      AppNotifier<FileSystemFileHandle?>('selectedFileForSave', null);
+  final selectedFiles = AppNotifier<List<FileSystemFileHandle>?>.fromSerde(
+    'selectedFiles',
+    null,
+    serde:
+        serdeFile<FileSystemFileHandle>().list<List<FileSystemFileHandle>?>(),
+  );
+  final selectedFileForSave = AppNotifier<FileSystemFileHandle?>.fromSerde(
+    'selectedFileForSave',
+    null,
+    serde: serdeFile<FileSystemFileHandle?>(),
+  );
   FileDescriptor? selectedFileForSaveDesc;
 
   final requestReadPermissions =
@@ -729,8 +874,10 @@ class AppState extends ChangeNotifier {
   void dispose() {
     for (final n in allNotifiers) {
       n.removeListener(notifyListeners);
+      n.dispose();
     }
     _errorsController.close();
+    removeListener(_saveInStore);
     super.dispose();
   }
 
@@ -901,8 +1048,49 @@ class AppState extends ChangeNotifier {
 
 class AppNotifier<T> extends ValueNotifier<T> {
   final String name;
+  final T Function(Object)? fromJson;
+  final Object? Function(T)? _toJson;
 
-  AppNotifier(this.name, T value) : super(value);
+  Object? toJson() => _toJson == null ? value : _toJson!(value);
+
+  AppNotifier(
+    this.name,
+    T value, {
+    this.fromJson,
+    Object? Function(T)? toJson,
+  })  : _toJson = toJson,
+        super(value);
+
+  AppNotifier.fromSerde(
+    this.name,
+    T value, {
+    required Serde<T> serde,
+  })  : fromJson = serde.fromJson,
+        _toJson = serde.toJson,
+        super(value);
+
+  bool canAssign(dynamic object) => object is T;
+}
+
+class Serde<T> {
+  final T Function(Object)? fromJson;
+  final Object? Function(T)? toJson;
+
+  const Serde({
+    this.fromJson,
+    this.toJson,
+  });
+
+  Serde<L> list<L extends List<T>?>() {
+    return Serde(
+      fromJson: fromJson == null
+          ? null
+          : (v) => (v as List)
+              .map((e) => (e == null ? null : fromJson!(e)) as T)
+              .toList() as L,
+      toJson: toJson == null ? null : (v) => v?.map(toJson!).toList(),
+    );
+  }
 }
 
 class FileDescriptor {

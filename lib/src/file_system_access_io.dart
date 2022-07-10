@@ -1,11 +1,12 @@
 import 'dart:io';
 
-import 'package:file_selector/file_selector.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:file_system_access/file_system_access.dart';
-import 'package:file_system_access/src/models/result.dart';
 
 abstract class FileSystemHandleIo extends FileSystemHandle {
+  @override
+  FileSystemHandle get inner => this;
+
   @override
   Future<PermissionStateEnum> queryPermission(
       {FileSystemPermissionMode? mode}) async {
@@ -332,4 +333,12 @@ class FileSystem extends FileSystemI {
     final file = await FileSelectorPlatform.instance.openFile();
     return file != null ? FileSystemFileHandleIo(file) : null;
   }
+
+  @override
+  FileSystemHandle handleFromInner(Object inner) {
+    return inner as FileSystemHandle;
+  }
+
+  @override
+  Future<FileSystemPersistance> getPersistance() => throw UnimplementedError();
 }
