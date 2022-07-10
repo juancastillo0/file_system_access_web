@@ -566,8 +566,8 @@ external _Promise<_FileSystemFileHandle> _showSaveFilePicker(
 @JS('showDirectoryPicker')
 external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker();
 
-@JS('getSavedFileSystemHandle')
-external _Promise<_FileSystemPersistance> _getSavedFileSystemHandle();
+@JS('getFileSystemAccessFilePersistence')
+external _Promise<_FileSystemPersistance> _getFileSystemAccessFilePersistence();
 
 @JS()
 @anonymous
@@ -746,17 +746,17 @@ class FileSystem extends FileSystemI {
         throw error;
       });
 
-  @override
-  FileSystemHandle handleFromInner(Object inner) {
-    if (inner is _FileSystemFileHandle) return FileSystemFileHandleJS(inner);
-    return FileSystemDirectoryHandleJS(inner as _FileSystemDirectoryHandle);
-  }
+  static Future<FileSystemPersistance>? _persistence;
 
   @override
   Future<FileSystemPersistance> getPersistance() =>
-      _ptf(_getSavedFileSystemHandle())
+      _persistence ??= _ptf(_getFileSystemAccessFilePersistence())
           .then((value) => _FileSystemPersistanceJS(value));
 }
+
+///
+/// UTILITIES
+///
 
 List<_FilePickerAcceptTypeJS>? _mapFilePickerTypes(
     List<FilePickerAcceptType>? list) {
