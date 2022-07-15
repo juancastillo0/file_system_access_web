@@ -1,7 +1,6 @@
-import 'dart:ui';
-
 import 'package:file_system_access/file_system_access.dart';
-import 'package:flutter/foundation.dart';
+import 'package:file_system_access/src/utils.dart';
+import 'package:meta/meta.dart';
 
 @immutable
 abstract class SerializedFileEntity {
@@ -210,7 +209,7 @@ class SerializedDirectory extends SerializedFileEntity {
   }
 
   @override
-  int get hashCode => hashValues(name, entities.hashCode);
+  int get hashCode => Object.hash(name, Object.hashAll(entities));
 }
 
 class SerializedFile extends SerializedFileEntity {
@@ -261,5 +260,5 @@ class SerializedFile extends SerializedFileEntity {
   }
 
   @override
-  int get hashCode => hashValues(name, content);
+  int get hashCode => Object.hash(name, content);
 }

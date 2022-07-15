@@ -1,9 +1,8 @@
 import 'dart:async';
 
 import 'package:file_system_access/src/file_system_access.dart';
-import 'package:file_system_access/src/models/result.dart';
 import 'package:file_system_access/src/models/serialized_entity.dart';
-import 'package:flutter/foundation.dart';
+import 'package:file_system_access/src/utils.dart';
 
 class DirectorySyncResult {
   DirectorySyncResult({
