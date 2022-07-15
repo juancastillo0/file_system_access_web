@@ -257,7 +257,7 @@ abstract class FileSystemI {
       return Ok(result);
     } else {
       await _synchronizer.dispose();
-      return const Err(null);
+      return Err(null);
     }
   }
 

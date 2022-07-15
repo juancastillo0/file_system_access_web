@@ -1,25 +1,23 @@
-class ResultException<ERR> {
-  final ERR error;
+import 'package:meta/meta.dart';
 
-  const ResultException(this.error);
-}
-
+@immutable
 abstract class Result<OK, ERR> {
   const Result._();
 
   const factory Result.ok(
     OK value,
   ) = Ok;
-  const factory Result.err(
-    ERR value,
-  ) = Err;
+  factory Result.err(
+    ERR value, {
+    StackTrace stackTrace,
+  }) = Err;
 
   OK? get okOrNull => when(ok: (ok) => ok, err: (_) => null);
   ERR? get errOrNull => when(ok: (ok) => null, err: (err) => err);
 
-  OK unwrap() => when(
-        ok: (ok) => ok,
-        err: (err) => throw ResultException(err),
+  OK unwrap() => map(
+        ok: (ok) => ok.value,
+        err: (err) => throw err,
       );
 
   T? whenOk<T>(T Function(OK) func) {
@@ -108,6 +106,26 @@ abstract class Result<OK, ERR> {
       err: (v) => Result.err(mapper(v.error)),
     );
   }
+
+  @override
+  bool operator ==(Object? other) {
+    return other is Result<OK, ERR> &&
+        other.runtimeType == runtimeType &&
+        other.errOrNull == errOrNull &&
+        other.okOrNull == okOrNull;
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, errOrNull, okOrNull);
+
+  @override
+  String toString() {
+    return map(
+      ok: (ok) => 'Ok<$OK, $ERR>(${ok.value})',
+      err: (err) =>
+          'Err<$OK, $ERR>(${err.error}, stackTrace: ${err.stackTrace})',
+    );
+  }
 }
 
 enum TypeResult {
@@ -178,10 +196,13 @@ class Ok<OK, ERR> extends Result<OK, ERR> {
 
 class Err<OK, ERR> extends Result<OK, ERR> {
   final ERR error;
+  final StackTrace stackTrace;
 
-  const Err(
-    this.error,
-  ) : super._();
+  Err(
+    this.error, {
+    StackTrace? stackTrace,
+  })  : stackTrace = stackTrace ?? StackTrace.current,
+        super._();
 
   @override
   TypeResult get typeEnum => TypeResult.err;
