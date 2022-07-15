@@ -279,7 +279,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             icon: const Icon(Icons.folder_open),
                           ),
                         Expanded(
-                          child: SelectableText('${e.name} (${e.kind.name})'),
+                          child: SelectableText(e.name),
                         ),
                       ],
                     ),
@@ -782,7 +782,7 @@ class AppState extends ChangeNotifier {
 
   void _setUpDB() async {
     try {
-      persistance = await FileSystem.instance.getPersistance();
+      persistance = await fileSystemGetPersistance();
 
       final db = await idb.idbFactoryNative.open(
         'MainDB',
@@ -895,13 +895,11 @@ class AppState extends ChangeNotifier {
 
   static Serde<T> serdeFile<T extends FileSystemHandle?>() {
     return Serde(
-      fromJson: (inner) => FileSystem.instance
-          .getPersistance()
+      fromJson: (inner) => fileSystemGetPersistance()
           .then((p) => p.get(inner as int)?.value as T),
       toJson: (v) => v == null
           ? null
-          : FileSystem.instance
-              .getPersistance()
+          : fileSystemGetPersistance()
               .then((p) => p.put(v))
               .then((value) => value.id),
     );
@@ -1283,4 +1281,11 @@ class FileSystemItemsStatus<T> {
       value: value,
     );
   }
+}
+
+Future<FileSystemPersistance> fileSystemGetPersistance() {
+  return FileSystem.instance.getPersistance(
+    databaseName: 'fsa_FilesDB',
+    objectStoreName: 'fsa_FilesObjectStore',
+  );
 }

@@ -332,5 +332,9 @@ class FileSystem extends FileSystemI {
   }
 
   @override
-  Future<FileSystemPersistance> getPersistance() => throw UnimplementedError();
+  Future<FileSystemPersistance> getPersistance({
+    String databaseName = 'FilesDB',
+    String objectStoreName = 'FilesObjectStore',
+  }) =>
+      throw UnimplementedError();
 }

@@ -561,7 +561,18 @@ external _Promise<_FileSystemFileHandle> _showSaveFilePicker(
 external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker();
 
 @JS('getFileSystemAccessFilePersistence')
-external _Promise<_FileSystemPersistance> _getFileSystemAccessFilePersistence();
+external _Promise<_FileSystemPersistance> _getFileSystemAccessFilePersistence([
+  _FileSystemPersistanceParams? params,
+]);
+
+@JS()
+@anonymous
+abstract class _FileSystemPersistanceParams {
+  external factory _FileSystemPersistanceParams({
+    String? databaseName,
+    String? objectStoreName,
+  });
+}
 
 @JS()
 @anonymous
@@ -738,9 +749,16 @@ class FileSystem extends FileSystemI {
   static Future<FileSystemPersistance>? _persistence;
 
   @override
-  Future<FileSystemPersistance> getPersistance() =>
-      _persistence ??= _ptf(_getFileSystemAccessFilePersistence())
-          .then((value) => _FileSystemPersistanceJS(value));
+  Future<FileSystemPersistance> getPersistance({
+    String databaseName = 'FilesDB',
+    String objectStoreName = 'FilesObjectStore',
+  }) =>
+      _persistence ??= _ptf(_getFileSystemAccessFilePersistence(
+        _FileSystemPersistanceParams(
+          databaseName: databaseName,
+          objectStoreName: objectStoreName,
+        ),
+      )).then((value) => _FileSystemPersistanceJS(value));
 }
 
 ///
