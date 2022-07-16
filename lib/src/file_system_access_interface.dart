@@ -1,11 +1,17 @@
 import 'dart:async';
+import 'dart:typed_data';
 
-import 'package:file_selector/file_selector.dart';
+import 'package:file_selector/file_selector.dart' as file_selector;
+
 import 'package:file_system_access/src/models/errors.dart';
+import 'package:file_system_access/src/models/params.dart';
 import 'package:file_system_access/src/models/result.dart';
 import 'package:file_system_access/src/models/serialized_entity.dart';
 import 'package:file_system_access/src/models/sync.dart';
 import 'package:file_system_access/src/models/write_chunk_type.dart';
+
+export 'package:file_selector/file_selector.dart' show XFile;
+export 'package:file_system_access/src/models/params.dart';
 
 /// If the state of the read permission of this handle is anything
 /// other than "prompt", this will return that state directly.
@@ -30,23 +36,6 @@ abstract class FileSystemHandle {
   Future<PermissionStateEnum> requestPermission({
     FileSystemPermissionMode? mode,
   });
-
-  // TODO: keep improving
-  Future<Result<PermissionStateEnum, Object>> requestPermissionActivation({
-    FileSystemPermissionMode? mode,
-  }) async {
-    try {
-      final state = await requestPermission(mode: mode);
-      return Ok(state);
-    } catch (e) {
-      if (e.toString().contains(
-            'SecurityError: User activation is required to request permissions',
-          )) {
-        return const Ok(PermissionStateEnum.prompt);
-      }
-      return Err(e);
-    }
-  }
 }
 
 /// https://developer.mozilla.org/docs/Web/API/window/showOpenFilePicker
@@ -87,7 +76,7 @@ abstract class FileSystemWritableFileStream {
 /// https://developer.mozilla.org/docs/Web/API/FileSystemFileHandle
 abstract class FileSystemFileHandle extends FileSystemHandle {
   /// throws NotAllowedError if FileSystemPermissionMode.read is not granted
-  Future<XFile> getFile();
+  Future<file_selector.XFile> getFile();
 
   /// throws NotAllowedError if
   /// FileSystemPermissionMode.readwrite is not granted
@@ -212,11 +201,14 @@ abstract class FileSystemI {
   Future<FileSystemFileHandle?> showSaveFilePicker({
     List<FilePickerAcceptType>? types,
     bool? excludeAcceptAllOption,
+    String? suggestedName,
   });
 
   /// https://developer.mozilla.org/docs/Web/API/Window/showDirectoryPicker
   /// Exception AbortError
-  Future<FileSystemDirectoryHandle?> showDirectoryPicker();
+  Future<FileSystemDirectoryHandle?> showDirectoryPicker([
+    FsDirectoryOptions options = const FsDirectoryOptions(),
+  ]);
 
   /// Utility function for querying and requesting
   /// permission if it hasn't been granted
@@ -261,6 +253,42 @@ abstract class FileSystemI {
     }
   }
 
+  /// If [isSupported] is false, [showOpenFilePicker] will throw and exception.
+  /// You can use this method for getting a list of selected files.
+  Future<List<FileSystemFileWebSafe>> showOpenFilePickerWebSafe([
+    FsOpenOptions options = const FsOpenOptions(),
+  ]) async {
+    if (isSupported) {
+      final selection = await showOpenFilePicker(
+        types: options.types,
+        excludeAcceptAllOption: options.excludeAcceptAllOption,
+        multiple: options.multiple,
+      );
+      return Future.wait(selection.map(
+        (e) async => FileSystemFileWebSafe(
+          file: await e.getFile(),
+          handle: e,
+        ),
+      ));
+    }
+    final files = await file_selector.openFiles(
+      initialDirectory: options.startIn?.path,
+      acceptedTypeGroups: options.types
+          .map(
+            (e) => file_selector.XTypeGroup(
+              label: e.description,
+              extensions: e.accept.values.expand((_e) => _e).toList(),
+              // TODO: test mimeTypes and webWildCards
+              mimeTypes: e.accept.keys.toList(),
+              webWildCards: null,
+            ),
+          )
+          .toList(),
+    );
+    return files.map((file) => FileSystemFileWebSafe(file: file)).toList();
+  }
+
+  /// Only available for the WEB platform.
   Future<FileSystemPersistance> getPersistance({
     String databaseName = 'FilesDB',
     String objectStoreName = 'FilesObjectStore',
@@ -279,4 +307,13 @@ abstract class FileSystemPersistanceItem {
   int get id;
   FileSystemHandle get value;
   DateTime get savedDate;
+class FileSystemFileWebSafe {
+  final FileSystemFileHandle? handle;
+  final file_selector.XFile file;
+
+  FileSystemFileWebSafe({
+    this.handle,
+    required this.file,
+  });
+}
 }

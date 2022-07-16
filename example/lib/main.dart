@@ -1257,13 +1257,23 @@ class FileSystemItemsStatus<T> {
     required FileSystemPermissionMode mode,
     required FutureOr<T> Function() compute,
   }) async {
+    const _kindOrder = [
+      FileSystemHandleKind.directory,
+      FileSystemHandleKind.file,
+    ];
+    final _sortedItems = [...items]
+      ..sort((a, b) => _kindOrder.indexOf(a.kind) - _kindOrder.indexOf(b.kind));
+
     final permissions = await Future.wait(
-      items.map((e) => e.requestPermissionActivation(mode: mode)),
+      _sortedItems.map((e) => e
+          .requestPermission(mode: mode)
+          .then<PermissionStateEnum?>((value) => value)
+          .catchError((_) => null)),
     );
-    final denied = permissions
-        .any((element) => element.okOrNull == PermissionStateEnum.denied);
-    final prompt = permissions.any((element) =>
-        element.isErr || element.okOrNull == PermissionStateEnum.prompt);
+    final denied =
+        permissions.any((element) => element == PermissionStateEnum.denied);
+    final prompt = permissions.any(
+        (element) => element == null || element == PermissionStateEnum.prompt);
     final permission = denied
         ? PermissionStateEnum.denied
         : prompt

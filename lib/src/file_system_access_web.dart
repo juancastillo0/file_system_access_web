@@ -147,13 +147,40 @@ class _FilePickerAcceptTypeJS {
 
 @JS()
 @anonymous
-class _FilePickerOptions {
-  external factory _FilePickerOptions({
+class _SaveFilePickerOptions {
+  external factory _SaveFilePickerOptions({
     required List<_FilePickerAcceptTypeJS> types,
     bool? excludeAcceptAllOption,
+    String? suggestedName,
+
+    /// String | FileSystemHandle
+    Object? startIn,
+    String? id,
   });
   external List<_FilePickerAcceptTypeJS>? get types; //@optional
   external bool? get excludeAcceptAllOption; //@optional
+  external String? get suggestedName; //@optional
+
+  /// String | FileSystemHandle
+  external Object? get startIn;
+  external String? get id;
+}
+
+@JS()
+@anonymous
+class _DirectoryPickerOptions {
+  external factory _DirectoryPickerOptions({
+    required String mode,
+
+    /// String | FileSystemHandle
+    Object? startIn,
+    String? id,
+  });
+  external FileSystemPermissionMode get mode;
+
+  /// String | FileSystemHandle
+  external Object? get startIn;
+  external String? get id;
 }
 
 @JS()
@@ -161,12 +188,20 @@ class _FilePickerOptions {
 class _OpenFilePickerOptions {
   external factory _OpenFilePickerOptions({
     bool? multiple,
-    List<_FilePickerAcceptTypeJS>? types,
+    required List<_FilePickerAcceptTypeJS> types,
     bool? excludeAcceptAllOption,
+
+    /// String | FileSystemHandle
+    Object? startIn,
+    String? id,
   });
   external bool? get multiple; //@optional
   external List<_FilePickerAcceptTypeJS>? get types; //@optional
   external bool? get excludeAcceptAllOption; //@optional
+
+  /// String | FileSystemHandle
+  external Object? get startIn;
+  external String? get id;
 }
 
 // tslint:disable-next-line:no-empty-interface
@@ -555,10 +590,11 @@ external _Promise<List<_FileSystemFileHandle>> _showOpenFilePicker(
 
 @JS('showSaveFilePicker')
 external _Promise<_FileSystemFileHandle> _showSaveFilePicker(
-    [/*Save*/ _FilePickerOptions? options]);
+    [_SaveFilePickerOptions? options]);
 
 @JS('showDirectoryPicker')
-external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker();
+external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker(
+    [_DirectoryPickerOptions? options]);
 
 @JS('getFileSystemAccessFilePersistence')
 external _Promise<_FileSystemPersistance> _getFileSystemAccessFilePersistence([
@@ -716,11 +752,13 @@ class FileSystem extends FileSystemI {
   Future<FileSystemFileHandle?> showSaveFilePicker({
     List<FilePickerAcceptType>? types,
     bool? excludeAcceptAllOption,
+    String? suggestedName,
   }) =>
       _ptf(
-        _showSaveFilePicker(_FilePickerOptions(
+        _showSaveFilePicker(_SaveFilePickerOptions(
           excludeAcceptAllOption: excludeAcceptAllOption,
           types: _mapFilePickerTypes(types) ?? [],
+          suggestedName: suggestedName,
         )),
       ).then<FileSystemFileHandle?>((value) => FileSystemFileHandleJS(value))
           // TODO: distinguish AbortError from others (for example, unsupported)
@@ -733,8 +771,16 @@ class FileSystem extends FileSystemI {
       });
 
   @override
-  Future<FileSystemDirectoryHandle?> showDirectoryPicker() =>
-      _ptf(_showDirectoryPicker())
+  Future<FileSystemDirectoryHandle?> showDirectoryPicker([
+    FsDirectoryOptions options = const FsDirectoryOptions(),
+  ]) =>
+      _ptf(_showDirectoryPicker(_DirectoryPickerOptions(
+        mode: options.mode.name,
+        id: options.id,
+        startIn: options.startIn?.path ??
+            (options.startIn?.handle as _FileSystemHandleJS?)?.inner ??
+            WellKnownDirectory.documents,
+      )))
           .then<FileSystemDirectoryHandle?>(
               (value) => FileSystemDirectoryHandleJS(value))
           // TODO: distinguish AbortError from others (for example, unsupported)

@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:file_system_access/file_system_access.dart';
 
 abstract class FileSystemHandleIo extends FileSystemHandle {
+  String get path;
+
   @override
   Future<PermissionStateEnum> queryPermission(
       {FileSystemPermissionMode? mode}) async {
@@ -48,10 +51,10 @@ class FileSystemWritableFileStreamIo extends FileSystemWritableFileStream {
 
   @override
   Future<void> close() async {
-    // final _currSink = _sink;
+    // final _currentSink = _sink;
     // _sink = null;
-    // if (_currSink != null) {
-    // await _currSink.flush();
+    // if (_currentSink != null) {
+    // await _currentSink.flush();
     return sink.close();
     // }
   }
@@ -105,6 +108,9 @@ class FileSystemFileHandleIo extends FileSystemHandleIo
     implements FileSystemFileHandle {
   final XFile file;
 
+  @override
+  String get path => file.path;
+
   FileSystemFileHandleIo(this.file);
 
   @override
@@ -144,6 +150,7 @@ class FileSystemFileHandleIo extends FileSystemHandleIo
 
 class FileSystemDirectoryHandleIo extends FileSystemHandleIo
     implements FileSystemDirectoryHandle {
+  @override
   final String path;
 
   FileSystemDirectoryHandleIo(this.path);
@@ -307,8 +314,13 @@ class FileSystem extends FileSystemI {
   bool get isSupported => true;
 
   @override
-  Future<FileSystemDirectoryHandle?> showDirectoryPicker() async {
-    final path = await FileSelectorPlatform.instance.getDirectoryPath();
+  Future<FileSystemDirectoryHandle?> showDirectoryPicker([
+    FsDirectoryOptions options = const FsDirectoryOptions(),
+  ]) async {
+    final path = await FilePicker.platform.getDirectoryPath(
+      initialDirectory: options.startIn?.path ??
+          (options.startIn?.handle as FileSystemHandleIo?)?.path,
+    );
     return path != null ? FileSystemDirectoryHandleIo(path) : null;
   }
 
@@ -318,17 +330,40 @@ class FileSystem extends FileSystemI {
     bool? excludeAcceptAllOption,
     bool? multiple,
   }) async {
-    final files = await FileSelectorPlatform.instance.openFiles();
-    return files.map((file) => FileSystemFileHandleIo(file)).toList();
+    final result = await FilePicker.platform.pickFiles(
+      allowedExtensions: _allowedExtensions(types),
+      type: _fileType(types),
+      allowMultiple: multiple ?? true,
+    );
+    if (result == null || result.count == 0) return [];
+    final list = await Future.wait(result.files.map(_xFileFromPickerFile));
+    return list.map((file) => FileSystemFileHandleIo(file)).toList();
   }
 
   @override
   Future<FileSystemFileHandle?> showSaveFilePicker({
     List<FilePickerAcceptType>? types,
     bool? excludeAcceptAllOption,
+    String? suggestedName,
   }) async {
-    final file = await FileSelectorPlatform.instance.openFile();
-    return file != null ? FileSystemFileHandleIo(file) : null;
+    final String? filePath;
+    if (Platform.isAndroid || Platform.isIOS) {
+      final result = await FilePicker.platform.pickFiles(
+        allowedExtensions: _allowedExtensions(types),
+        type: _fileType(types),
+        allowMultiple: false,
+      );
+      filePath =
+          result == null || result.count == 0 ? null : result.paths.first;
+    } else {
+      filePath = await FilePicker.platform.saveFile(
+        allowedExtensions: _allowedExtensions(types),
+        type: _fileType(types),
+        fileName: suggestedName,
+      );
+    }
+    if (filePath == null) return null;
+    return FileSystemFileHandleIo(XFile(filePath));
   }
 
   @override
@@ -336,5 +371,75 @@ class FileSystem extends FileSystemI {
     String databaseName = 'FilesDB',
     String objectStoreName = 'FilesObjectStore',
   }) =>
+      throw UnsupportedError(
+        '`FileSystem.getPersistance()` is only supported for WEB.'
+        ' You could save the Directory or File path in your'
+        ' selected storage method for native platforms.',
+      );
+
       throw UnimplementedError();
 }
+
+const _kIsWeb = identical(0, 0.0);
+
+Future<XFile> _xFileFromPickerFile(PlatformFile file) async {
+  if (_kIsWeb) {
+    final bytes = file.bytes ??
+        Uint8List.fromList(
+          (await file.readStream!.toList()).expand((e) => e).toList(),
+        );
+
+    return XFile.fromData(
+      bytes,
+      name: file.name,
+      length: bytes.lengthInBytes,
+    );
+  } else {
+    return XFile(
+      file.path!,
+      bytes: file.bytes,
+      name: file.name,
+      length: file.bytes?.lengthInBytes ?? file.size,
+      lastModified: await File(file.path!)
+          .lastModified()
+          .then<DateTime?>((value) => value)
+          .onError((error, stackTrace) => null),
+      mimeType: null,
+    );
+  }
+}
+
+List<String>? _allowedExtensions(List<FilePickerAcceptType>? types) {
+  return types?.expand((t) => t.accept.values.expand((e) => e)).toList();
+}
+
+FileType _fileType(List<FilePickerAcceptType>? types) {
+  FileType fileType = FileType.any;
+  if (types != null && types.length == 1 && types.first.accept.length == 1) {
+    final key = types.first.accept.keys.first;
+    final index = FileType.values
+        .indexWhere((element) => key.startsWith('${element.name}/'));
+    if (index != -1) {
+      fileType = FileType.values[index];
+    }
+  }
+
+  return fileType;
+}
+
+// Future<PlatformFile> _pickerFileFromXFile(XFile file) async {
+//   return PlatformFile(
+//     bytes: _kIsWeb ? await file.readAsBytes() : null,
+//     name: file.name,
+//     size: await file.length(),
+//     readStream: _kIsWeb ? null : file.openRead(),
+//     path: file.path,
+//   );
+// }
+
+// Future<int> length
+// Future<DateTime> lastAccessed
+// Future<DateTime> lastModified
+// Stream<List<int>> openRead
+// Future<Uint8List> readAsBytes
+// String get path
