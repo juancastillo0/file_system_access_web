@@ -8,9 +8,10 @@ library file_system_access;
 
 import 'dart:async';
 import 'dart:html' as html;
+import 'dart:js';
 import 'dart:js_util';
+import 'dart:typed_data';
 
-import 'package:file_selector/file_selector.dart';
 import 'package:file_system_access/file_system_access.dart';
 import 'package:file_system_access/src/utils.dart';
 import 'package:js/js.dart';
@@ -69,8 +70,6 @@ class _Promise<T> {
 
 @JS('BaseFileSystemHandle')
 abstract class _FileSystemHandle {
-  // protected constructor();
-
   external String get kind;
   external String get name;
 
@@ -79,22 +78,17 @@ abstract class _FileSystemHandle {
       [_FileSystemHandlePermissionDescriptor? descriptor]);
   external _Promise<String /*PermissionStateEnum*/ > requestPermission(
       [_FileSystemHandlePermissionDescriptor? descriptor]);
-
-  // /**
-  //  * @deprecated Old property just for Chromium <=85. Use `kind` property in the new API.
-  //  */
-  // readonly isFile: this['kind'] extends 'file' ? true : false;
-
-  // /**
-  //  * @deprecated Old property just for Chromium <=85. Use `kind` property in the new API.
-  //  */
-  // readonly isDirectory: this['kind'] extends 'directory' ? true : false;
 }
 
 abstract class _FileSystemHandleJS extends FileSystemHandle {
   _FileSystemHandleJS(this.inner);
 
   final _FileSystemHandle inner;
+
+  factory _FileSystemHandleJS.fromInner(_FileSystemHandle inner) =>
+      inner.kind == FileSystemHandleKind.directory.name
+          ? FileSystemDirectoryHandleJS(inner as _FileSystemDirectoryHandle)
+          : FileSystemFileHandleJS(inner as _FileSystemFileHandle);
 
   @override
   Future<bool> isSameEntry(FileSystemHandle other) =>
@@ -351,9 +345,6 @@ class FileSystemWritableFileStreamJS implements FileSystemWritableFileStream {
   Future<void> truncate(int size) => _ptf(inner.truncate(size));
 }
 
-// const FileSystemHandle: typeof BaseFileSystemHandle;
-// type FileSystemHandle = FileSystemFileHandle | FileSystemDirectoryHandle;
-
 //@class
 @JS('FileSystemFileHandle')
 abstract class _FileSystemFileHandle extends _FileSystemHandle {
@@ -516,10 +507,7 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
         final entry = await _ptf(entriesIterator.next());
         final handle = entry.value;
         if (handle != null) {
-          final _entry = handle.kind == 'directory'
-              ? FileSystemDirectoryHandleJS(
-                  handle as _FileSystemDirectoryHandle)
-              : FileSystemFileHandleJS(handle as _FileSystemFileHandle);
+          final _entry = _FileSystemHandleJS.fromInner(handle);
           controller.add(_entry);
         }
         if (entry.done) {
@@ -616,7 +604,7 @@ abstract class _FileSystemPersistance {
   external _FileSystemPersistanceItem? get(int id);
   external List<_FileSystemPersistanceItem> getAll();
   external _Promise<_FileSystemPersistanceItem?> delete(int id);
-  external _Promise<_FileSystemPersistanceItem> put(_FileSystemHandle handle);
+  external _Promise<_FileSystemPersistanceItem> put(Object handle);
   // external Map<int, _FileSystemPersistanceItem> get allMap;
   external List<int> keys();
 }
@@ -625,7 +613,7 @@ abstract class _FileSystemPersistance {
 @anonymous
 abstract class _FileSystemPersistanceItem {
   external int get id;
-  external _FileSystemHandle get value;
+  external Object get value;
   external DateTime get savedDate;
 }
 
@@ -653,7 +641,21 @@ class _FileSystemPersistanceJS implements FileSystemPersistance {
   @override
   Future<_FileSystemPersistanceItemJS> put(FileSystemHandle handle) =>
       _ptf(inner.put((handle as _FileSystemHandleJS).inner))
-          .then((value) => _FileSystemPersistanceItemJS(value));
+          .then(_FileSystemPersistanceItemJS.new);
+
+  @override
+  Future<_FileSystemPersistanceItemJS> putFile(XFile file) async {
+    final array = await file.readAsBytes();
+    final _file = html.File(
+      [array.buffer],
+      file.name,
+      <String, Object?>{
+        'lastModified': (await file.lastModified()).millisecondsSinceEpoch,
+        'type': file.mimeType,
+      },
+    );
+    return _ptf(inner.put(_file)).then(_FileSystemPersistanceItemJS.new);
+  }
 
   // Map<int, _FileSystemPersistanceItemJS> get allMap => inner.allMap
   //   .map((key, value) => MapEntry(key, _FileSystemPersistanceItemJS(value)));
@@ -661,7 +663,7 @@ class _FileSystemPersistanceJS implements FileSystemPersistance {
   List<int> keys() => inner.keys();
 }
 
-class _FileSystemPersistanceItemJS implements FileSystemPersistanceItem {
+class _FileSystemPersistanceItemJS with FileSystemPersistanceItem {
   final _FileSystemPersistanceItem inner;
 
   _FileSystemPersistanceItemJS(this.inner);
@@ -669,19 +671,39 @@ class _FileSystemPersistanceItemJS implements FileSystemPersistanceItem {
   @override
   int get id => inner.id;
 
+  bool get isHandle => !hasProperty(inner.value, 'digestSha1Hex');
+
   @override
-  late final FileSystemHandle value = inner.value.kind ==
-          FileSystemHandleKind.directory.name
-      ? FileSystemDirectoryHandleJS(inner.value as _FileSystemDirectoryHandle)
-      : FileSystemFileHandleJS(inner.value as _FileSystemFileHandle);
+  late final FileSystemHandle? value = isHandle
+      ? _FileSystemHandleJS.fromInner(inner.value as _FileSystemHandle)
+      : null;
+
+  @override
+  late final SavedFile? file =
+      isHandle ? null : _savedFileFromValue(inner.value);
 
   @override
   DateTime get savedDate => inner.savedDate;
 
   @override
   String toString() {
-    return 'FileSystemPersistanceItem(id: $id, value: $value, savedDate: $savedDate)';
+    return 'FileSystemPersistanceItem(id: $id,'
+        ' value: $value, file: $file, savedDate: $savedDate)';
   }
+}
+
+SavedFile _savedFileFromValue(Object value) {
+  final jsObject = JsObject.jsify(value);
+  return SavedFile(
+    name: jsObject['name'] as String,
+    mimeType: jsObject['type'] as String,
+    lastModified: DateTime.fromMillisecondsSinceEpoch(
+      jsObject['lastModified'] as int,
+    ),
+    arrayBuffer: jsObject['arrayBuffer'] as ByteBuffer,
+    digestSha1Hex: jsObject['digestSha1Hex'] as String,
+    webkitRelativePath: jsObject['webkitRelativePath'] as String?,
+  );
 }
 
 class FileSystem extends FileSystemI {
@@ -696,7 +718,7 @@ class FileSystem extends FileSystemI {
   // Future<String?> readFileAsText(dynamic file) {
   //   final reader = html.FileReader();
   //   final completer = Completer<String?>();
-  //   void _c(String? v) => !completer.isCompleted ? completer.complete(v) : null;
+  //   void _c(String? v) => !completer.isCompleted? completer.complete(v):null;
 
   //   reader.onLoad.listen((e) {
   //     _c(reader.result as String?);

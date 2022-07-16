@@ -298,15 +298,53 @@ abstract class FileSystemI {
 abstract class FileSystemPersistance {
   FileSystemPersistanceItem? get(int id);
   Future<FileSystemPersistanceItem?> delete(int id);
-  Future<FileSystemPersistanceItem> put(FileSystemHandle handle);
+  Future<FileSystemPersistanceItem> put(
+    FileSystemHandle handle,
+    // TODO: { int? id, }
+  );
+
+  /// Useful when [FileSystem.isSupported] is false and therefore you
+  /// do not have access to [FileSystemHandle]s or maybe you expect the user
+  /// to delete the file referenced by the [FileSystemHandle] and you what to
+  /// keep the file's information and [ByteBuffer] data persisted.
+  Future<FileSystemPersistanceItem> putFile(file_selector.XFile file);
   // Map<int, FileSystemPersistanceItem> get allMap;
   List<FileSystemPersistanceItem> getAll();
 }
 
-abstract class FileSystemPersistanceItem {
+mixin FileSystemPersistanceItem {
   int get id;
-  FileSystemHandle get value;
+  FileSystemHandle? get value;
   DateTime get savedDate;
+  SavedFile? get file;
+}
+
+class SavedFile {
+  final String name;
+  final String mimeType;
+  final DateTime lastModified;
+  final ByteBuffer arrayBuffer;
+  final String digestSha1Hex;
+  final String? webkitRelativePath;
+
+  SavedFile({
+    required this.name,
+    required this.mimeType,
+    required this.lastModified,
+    required this.arrayBuffer,
+    required this.digestSha1Hex,
+    this.webkitRelativePath,
+  });
+
+  late final file_selector.XFile file = file_selector.XFile.fromData(
+    arrayBuffer.asUint8List(),
+    lastModified: lastModified,
+    length: arrayBuffer.lengthInBytes,
+    mimeType: mimeType,
+    name: name,
+  );
+}
+
 class FileSystemFileWebSafe {
   final FileSystemFileHandle? handle;
   final file_selector.XFile file;
