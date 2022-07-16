@@ -402,11 +402,47 @@ abstract class _FileSystemDirectoryHandle extends _FileSystemHandle {
   // AsyncIterableIterator<FileSystemHandle> values();
   // AsyncIterableIterator<[string, FileSystemHandle]> entries();
   // [Symbol.asyncIterator]: FileSystemDirectoryHandle['entries'];
+}
 
-  // /**
-  //  * @deprecated Old method just for Chromium <=85. Use `navigator.storage.getDirectory()` in the new API.
-  //  */
-  // static getSystemDirectory(options: GetSystemDirectoryOptions): Promise<FileSystemDirectoryHandle>;
+class StorageManagerJS implements StorageManager {
+  final html.StorageManager inner;
+
+  StorageManagerJS(this.inner);
+
+  @override
+  Future<bool> persisted() => inner.persisted();
+
+  @override
+  Future<bool> persist() => inner.persist();
+
+  @override
+  Future<StorageEstimate> estimate() => inner.estimate().then((value) {
+        return _StorageEstimate(
+          quota: value!['quota'] as int,
+          usage: value['usage'] as int,
+          usageDetails: (value['usageDetails'] as Map?)?.cast() ?? {},
+        );
+      });
+
+  @override
+  Future<FileSystemDirectoryHandle> getDirectory() =>
+      _ptf(_navigatorStorageGetDirectory())
+          .then(FileSystemDirectoryHandleJS.new);
+}
+
+class _StorageEstimate implements StorageEstimate {
+  @override
+  final int usage;
+  @override
+  final int quota;
+  @override
+  final Map<String, int> usageDetails;
+
+  _StorageEstimate({
+    required this.usage,
+    required this.quota,
+    required this.usageDetails,
+  });
 }
 
 GetHandleError _mapGetHandleError(
@@ -588,6 +624,9 @@ external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker(
 external _Promise<_FileSystemPersistance> _getFileSystemAccessFilePersistence([
   _FileSystemPersistanceParams? params,
 ]);
+
+@JS('navigator.storage.getDirectory')
+external _Promise<_FileSystemDirectoryHandle> _navigatorStorageGetDirectory();
 
 @JS()
 @anonymous
@@ -827,6 +866,10 @@ class FileSystem extends FileSystemI {
           objectStoreName: objectStoreName,
         ),
       )).then((value) => _FileSystemPersistanceJS(value));
+
+  @override
+  StorageManager get storageManager =>
+      StorageManagerJS(html.window.navigator.storage!);
 }
 
 ///

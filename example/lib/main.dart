@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
 import 'package:idb_shim/idb_shim.dart' as idb;
 import 'package:url_launcher/link.dart';
@@ -52,27 +51,34 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
+  ScaffoldFeatureController showSnackBar(String text, {bool isError = false}) {
+    late final ScaffoldFeatureController controller;
+
+    final snackbar = SnackBar(
+      backgroundColor: isError ? Colors.red : Colors.blue,
+      width: 400,
+      behavior: SnackBarBehavior.floating,
+      content: Text(text),
+      duration: const Duration(seconds: 6),
+      action: SnackBarAction(
+        textColor: Colors.white,
+        label: 'Close',
+        onPressed: () {
+          controller.close();
+        },
+      ),
+    );
+
+    controller = ScaffoldMessenger.of(context).showSnackBar(snackbar);
+    return controller;
+  }
+
   @override
   void initState() {
     super.initState();
     state.addListener(_onUpdate);
     _errorSubs = state.errorsStream.listen((event) {
-      late final ScaffoldFeatureController controller;
-      final snackbar = SnackBar(
-        backgroundColor: Colors.red,
-        width: 400,
-        behavior: SnackBarBehavior.floating,
-        content: Text(event),
-        action: SnackBarAction(
-          textColor: Colors.white,
-          label: 'Close',
-          onPressed: () {
-            controller.close();
-          },
-        ),
-      );
-
-      controller = ScaffoldMessenger.of(context).showSnackBar(snackbar);
+      showSnackBar(event, isError: true);
     });
 
     _editingFileTextSubs = state.editingFileTextStream.listen((event) {
@@ -119,7 +125,7 @@ class _MyHomePageState extends State<MyHomePage> {
               } else {
                 yield Center(
                   child: SizedBox(
-                    height: 320,
+                    height: _index == 0 ? 375 : 320,
                     width: mq.size.width < 600 ? mq.size.width : 600,
                     child: _inner,
                   ),
@@ -158,7 +164,10 @@ class _MyHomePageState extends State<MyHomePage> {
             builder: (context, launch) => TextButton(
               style: TextButton.styleFrom(primary: Colors.white),
               onPressed: launch,
-              child: const Text('Github'),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4.0),
+                child: Text('Github'),
+              ),
             ),
           ),
         ],
@@ -178,6 +187,51 @@ class _MyHomePageState extends State<MyHomePage> {
     return Column(
       children: [
         Text('Is supported: ${FileSystem.instance.isSupported}'),
+        FutureBuilder<StorageManagerInfo>(
+          future: state.storageManagerInfo,
+          builder: (context, snapshot) {
+            return Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (snapshot.hasError)
+                    Text('StorageManagerInfo Error - ${snapshot.error}')
+                  else if (!snapshot.hasData)
+                    const CircularProgressIndicator()
+                  else
+                    Text(
+                      'persisted: ${snapshot.data!.persisted}'
+                      '\nquota: ${snapshot.data!.estimate.quota}\nusage: ${snapshot.data!.estimate.usage}'
+                      '\ndirectory is null: ${snapshot.data!.directory == null}',
+                    ),
+                  const SizedBox(width: 20),
+                  Column(
+                    children: [
+                      if (snapshot.hasData) ...[
+                        OutlinedButton(
+                          key: const Key('showStorageManagerInfoDetails'),
+                          onPressed: () {
+                            showSnackBar(
+                              'StorageManagerInfo details: "${snapshot.data!.estimate.usageDetails}"',
+                            );
+                          },
+                          child: const Text('Details'),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      OutlinedButton(
+                        key: const Key('retrieveStorageInfo'),
+                        onPressed: state.retrieveStorageInfo,
+                        child: const Text('Refresh'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: ElevatedButton(
@@ -939,6 +993,11 @@ class AppState extends ChangeNotifier {
     serde: serdeFile<FileSystemFileHandle?>(),
   );
   FileSystemItemsStatus<FileDescriptor>? selectedFileForSaveDesc;
+  Future<StorageManagerInfo>? _storageManagerInfo;
+  Future<StorageManagerInfo> get storageManagerInfo {
+    if (_storageManagerInfo == null) retrieveStorageInfo();
+    return _storageManagerInfo!;
+  }
 
   final requestReadPermissions =
       AppNotifier<bool>('requestReadPermissions', true);
@@ -1017,6 +1076,11 @@ class AppState extends ChangeNotifier {
     selectedDirectory.value = directory;
   }
 
+  void retrieveStorageInfo() {
+    _storageManagerInfo = StorageManagerInfo.retrieve();
+    notifyListeners();
+  }
+
   void selectDirectory() async {
     final directory = await FileSystem.instance.showDirectoryPicker();
     if (directory == null) {
@@ -1052,7 +1116,6 @@ class AppState extends ChangeNotifier {
         : await FileSystem.instance.showOpenSingleFilePicker();
     if (fileHandle == null) {
       _errorsController.add('No file selected');
-      return null;
     } else {
       selectFileForEdit(fileHandle, created: create);
     }
@@ -1095,7 +1158,6 @@ class AppState extends ChangeNotifier {
         _errorsController.add('Error opening file. $e $s');
       }
     }
-    return null;
   }
 
   void deleteItems(List<FileSystemHandle> handles) async {
@@ -1298,4 +1360,31 @@ Future<FileSystemPersistance> fileSystemGetPersistance() {
     databaseName: 'fsa_FilesDB',
     objectStoreName: 'fsa_FilesObjectStore',
   );
+}
+
+class StorageManagerInfo {
+  final bool persisted;
+  final StorageEstimate estimate;
+  final FileSystemDirectoryHandle? directory;
+
+  StorageManagerInfo({
+    required this.persisted,
+    required this.estimate,
+    required this.directory,
+  });
+
+  static Future<StorageManagerInfo> retrieve() async {
+    FileSystemDirectoryHandle? directory;
+    try {
+      directory = await FileSystem.instance.storageManager.getDirectory();
+    } catch (_) {}
+    final estimate = FileSystem.instance.storageManager.estimate();
+    final persisted = FileSystem.instance.storageManager.persisted();
+
+    return StorageManagerInfo(
+      estimate: await estimate,
+      persisted: await persisted,
+      directory: directory,
+    );
+  }
 }

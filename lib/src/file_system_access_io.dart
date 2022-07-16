@@ -377,7 +377,10 @@ class FileSystem extends FileSystemI {
         ' selected storage method for native platforms.',
       );
 
-      throw UnimplementedError();
+  @override
+  StorageManager get storageManager => throw UnimplementedError(
+        '`FileSystem.storageManager` is only implemented in WEB.',
+      );
 }
 
 const _kIsWeb = identical(0, 0.0);

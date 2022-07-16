@@ -293,6 +293,9 @@ abstract class FileSystemI {
     String databaseName = 'FilesDB',
     String objectStoreName = 'FilesObjectStore',
   });
+
+  /// Only available for the WEB platform.
+  StorageManager get storageManager;
 }
 
 abstract class FileSystemPersistance {
@@ -354,4 +357,34 @@ class FileSystemFileWebSafe {
     required this.file,
   });
 }
+
+abstract class StorageEstimate {
+  /// A numeric value in bytes approximating the amount of storage space
+  /// currently being used by the site or Web app, out of the
+  /// available space as indicated by quota. Unit is byte.
+  int get usage;
+
+  /// A numeric value in bytes which provides a conservative approximation
+  /// of the total storage the user's device or computer has available for
+  /// the site origin or Web app. It's possible that there's more than this
+  /// amount of space available though you can't rely on that being the case.
+  int get quota;
+
+  /// Example: {indexedDB: 21160, serviceWorkerRegistrations: 328}
+  Map<String, int> get usageDetails;
+}
+
+abstract class StorageManager {
+  /// https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persisted
+  Future<bool> persisted();
+
+  /// https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist
+  Future<bool> persist();
+
+  /// https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/estimate
+  Future<StorageEstimate> estimate();
+
+  /// https://wicg.github.io/file-system-access/#dom-storagemanager-getdirectory
+  /// throws SecurityError
+  Future<FileSystemDirectoryHandle> getDirectory();
 }
