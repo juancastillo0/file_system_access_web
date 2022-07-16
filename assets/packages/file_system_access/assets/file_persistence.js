@@ -1,13 +1,20 @@
-//
+//@ts-check
 
 if ("showOpenFilePicker" in window) {
-  /** @type {<T>(name: string, objectStore: string) => Promise<{
+  /**
+   * @template T
+   * @typedef {{
    * put: (v:T, k?:IDBValidKey) => Promise<IDBValidKey>
-   * get: (k:IDBValidKey | IDBKeyRange) => Promise<T?>
-   * clear: () => Promise<void>
+   * get: (k:IDBValidKey | IDBKeyRange) => Promise<T | undefined>
+   * clear: () => Promise
    * getAll: (query?:IDBValidKey | IDBKeyRange, count?:number) => Promise<Array<T>>
    * delete: (k:IDBValidKey | IDBKeyRange) => Promise<undefined>
-   * }}> */
+   * }} PIndexedDB
+   */
+
+  /**
+   * @type {<T>(name: string, objectStore: string) => Promise<PIndexedDB<T>>}
+   *  */
   const openDB = (name, objectStore) => {
     return new Promise((resolve, reject) => {
       const dbReq = window.indexedDB.open(name, 1);
@@ -18,7 +25,7 @@ if ("showOpenFilePicker" in window) {
         });
       };
       dbReq.onsuccess = (e) => {
-        /** @type {(exec: <T>(s:IDBObjectStore) => IDBRequest<T>, mode: IDBTransactionMode) => Promise<T>} */
+        /** @type {<T>(exec: (s:IDBObjectStore) => IDBRequest<T>, mode: IDBTransactionMode) => Promise<T>} */
         const generic = (exec, mode) => {
           return new Promise((resolve, reject) => {
             const tx = dbReq.result.transaction(objectStore, mode);
@@ -50,12 +57,12 @@ if ("showOpenFilePicker" in window) {
   };
   /**
    * @typedef {Object} SyncDB
-   * @property {Map<number, any>} allMap
-   * @property {Map<any, any>} allValueMap
-   * @property {(v: any) => Promise<SavedItem>} put
-   * @property {(id: number) => SavedItem?} get
-   * @property {(id: number) => Promise<SavedItem?>} delete
-   * @property {() => Array<any>} keys
+   * @property {Map<number, SavedItem>} allMap
+   * @property {Map<FileSystemHandle | string, SavedItem>} allValueMap
+   * @property {(v: FileSystemHandle | File) => Promise<SavedItem>} put
+   * @property {(id: number) => SavedItem | undefined} get
+   * @property {(id: number) => Promise<SavedItem | undefined>} delete
+   * @property {() => Array<number>} keys
    * @property {() => Array<SavedItem>} getAll
    *
    **/
@@ -63,18 +70,79 @@ if ("showOpenFilePicker" in window) {
   /**
    * @typedef {Object} SavedItem
    * @property {number} id
-   * @property {any} value
+   * @property {FileSystemHandle | SavedFile} value
    * @property {Date} savedDate
    *
    **/
 
-  /** @type {(dbFuture: ReturnType<openDB>) => Promise<SyncDB>} */
+  /**
+   * @typedef {Object} SavedFile
+   * @property {string} name
+   * @property {string} type
+   * @property {number} lastModified
+   * @property {number} size
+   * @property {ArrayBuffer} arrayBuffer
+   * @property {string} digestSha1Hex
+   * @property {string} webkitRelativePath
+   *
+   **/
+
+  /** @type {(file: SavedFile) => File} */
+  const fileFromSavedFile = (file) => {
+    const newFile = new File([file.arrayBuffer], file.name, {
+      lastModified: file.lastModified,
+      type: file.type,
+    });
+    /** @type {any} */ (newFile).webkitRelativePath = file.webkitRelativePath;
+
+    return newFile;
+  };
+
+  /** @type {(digestSha1Hex: string, file: File | SavedFile) => string} */
+  const getKeyFromFile = (digestSha1Hex, value) => {
+    return [
+      digestSha1Hex,
+      value.name,
+      value.size,
+      value.type,
+      value.lastModified,
+      value.webkitRelativePath,
+    ]
+      .map((s) => encodeURIComponent(s))
+      .join(",");
+  };
+
+  /** @type {(file: FileSystemHandle | SavedFile) => FileSystemHandle | string} */
+  const getKeyFromSavedValue = (value) => {
+    return value instanceof FileSystemHandle
+      ? value
+      : getKeyFromFile(value.digestSha1Hex, value);
+  };
+
+  /** @type {(file: File) => Promise<{digestSha1Hex: string, arrayBuffer: ArrayBuffer, fileKey: string}>} */
+  const getDigestFromFile = async (file) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-1", arrayBuffer);
+    const hashHex = Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    return {
+      arrayBuffer: arrayBuffer,
+      digestSha1Hex: hashHex,
+      fileKey: getKeyFromFile(hashHex, file),
+    };
+  };
+
+  /** @type {(dbFuture: Promise<PIndexedDB<SavedItem>>) => Promise<SyncDB>} */
   const _dbFunc = (dbFuture) =>
     dbFuture.then((db) =>
       db.getAll().then((all) => {
         // Make maps
         const allMap = new Map(all.map((v) => [v.id, v]));
-        const allValueMap = new Map(all.map((v) => [v.value, v]));
+        const allValueMap = new Map(
+          all.map((v) => [getKeyFromSavedValue(v.value), v])
+        );
         let maxId = Math.max(...allMap.keys(), 0);
 
         return {
@@ -90,40 +158,95 @@ if ("showOpenFilePicker" in window) {
 
             return db.delete(id).then(() => {
               allMap.delete(id);
-              allValueMap.delete(item.value);
+              allValueMap.delete(getKeyFromSavedValue(item.value));
               return item;
             });
           },
           put: async (v) => {
+            if (v instanceof ArrayBuffer) {
+              const newV = {
+                arrayBuffer: async () => v,
+              };
+              v = /** @type {File} */ (/** @type {unknown} */ (newV));
+            }
             const s = Object.getOwnPropertySymbols(v).find(
               (s) => String(s) === "Symbol(_dartObj)"
             );
             if (s) {
+              console.log("Symbol(_dartObj)", s, v);
               v = v[s];
             }
+            const arrayBufferInfo =
+              v instanceof FileSystemHandle
+                ? undefined
+                : await getDigestFromFile(v);
             // Retrieve by value
-            const _saved = allValueMap.get(v);
+            const _saved = allValueMap.get(
+              v instanceof FileSystemHandle
+                ? v
+                : /** @type {string} */ (arrayBufferInfo?.fileKey)
+            );
             if (_saved) return _saved;
+
             // Retrieve by isSameEntry
             for (const [key, value] of allMap) {
               const c = value.value;
+              // if ("arrayBuffer" in c && v instanceof File) {
+              //   if (
+              //     v.name === c.name &&
+              //     v.lastModified === c.lastModified &&
+              //     v.size === c.size &&
+              //     v.type === c.type &&
+              //     v.webkitRelativePath === c.webkitRelativePath &&
+              //     arrayBufferInfo?.digestSha1Hex === c.digestSha1Hex
+              //   ) {
+              //     // TODO: should be list of items
+              //     return value;
+              //   }
+              // } else
               if (
-                v.name === c.name &&
-                v.kind === c.kind &&
-                (await v.isSameEntry(value.value))
+                c instanceof FileSystemHandle &&
+                v instanceof FileSystemHandle
               ) {
-                // TODO: should be list of items
-                return value;
+                if (
+                  v.name === c.name &&
+                  v.kind === c.kind &&
+                  (await v.isSameEntry(c))
+                ) {
+                  // TODO: should be list of items
+                  return value;
+                }
               }
             }
             // It's not saved, save it
             maxId += 1;
             /** @type {SavedItem} **/
-            const item = { value: v, id: maxId, savedDate: new Date() };
+            let item;
+            if (v instanceof FileSystemHandle) {
+              item = { value: v, id: maxId, savedDate: new Date() };
+            } else {
+              const _arrayBufferInfo =
+                /** @type {Awaited<ReturnType<getDigestFromFile>>} */ (
+                  arrayBufferInfo
+                );
+              item = {
+                id: maxId,
+                savedDate: new Date(),
+                value: {
+                  arrayBuffer: _arrayBufferInfo.arrayBuffer,
+                  digestSha1Hex: _arrayBufferInfo.digestSha1Hex,
+                  lastModified: v.lastModified,
+                  type: v.type,
+                  size: v.size,
+                  name: v.name,
+                  webkitRelativePath: v.webkitRelativePath,
+                },
+              };
+            }
 
             return db.put(item).then((id) => {
-              allMap.set(id, item);
-              allValueMap.set(item.value, item);
+              allMap.set(/** @type {number} */ (id), item);
+              allValueMap.set(getKeyFromSavedValue(item.value), item);
               return item;
             });
           },
@@ -135,13 +258,16 @@ if ("showOpenFilePicker" in window) {
   const _dbMap = new Map();
 
   /** @type {(obj?:{databaseName?:string, objectStoreName?:string}) => Promise<SyncDB>}>} */
-  window.getFileSystemAccessFilePersistence = (obj) => {
+  window["getFileSystemAccessFilePersistence"] = (obj) => {
     const databaseName = obj?.databaseName ? obj.databaseName : "FilesDB";
     const objectStoreName = obj?.objectStoreName
       ? obj.objectStoreName
       : "FilesObjectStore";
 
-    const dbKey = databaseName + "|" + objectStoreName;
+    const dbKey =
+      encodeURIComponent(databaseName) +
+      "," +
+      encodeURIComponent(objectStoreName);
     let _db = _dbMap.get(dbKey);
     if (_db) return _db;
     _db = _dbFunc(openDB(databaseName, objectStoreName));
