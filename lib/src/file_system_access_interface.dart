@@ -176,33 +176,26 @@ abstract class FileSystemI {
 
   /// https://developer.mozilla.org/docs/Web/API/Window/showOpenFilePicker
   /// Exception AbortError
-  Future<List<FileSystemFileHandle>> showOpenFilePicker({
-    List<FilePickerAcceptType>? types,
-    bool? excludeAcceptAllOption,
-    bool? multiple,
-  });
+  Future<List<FileSystemFileHandle>> showOpenFilePicker([
+    FsOpenOptions options = const FsOpenOptions(),
+  ]);
 
   /// https://developer.mozilla.org/docs/Web/API/Window/showOpenFilePicker
   /// Exception AbortError
-  Future<FileSystemFileHandle?> showOpenSingleFilePicker({
-    List<FilePickerAcceptType>? types,
-    bool? excludeAcceptAllOption,
-  }) async {
+  Future<FileSystemFileHandle?> showOpenSingleFilePicker([
+    FsOpenOptions options = const FsOpenOptions(),
+  ]) async {
     final files = await showOpenFilePicker(
-      multiple: false,
-      excludeAcceptAllOption: excludeAcceptAllOption,
-      types: types,
+      options.copyWith(multiple: false),
     );
     return files.isEmpty ? null : files[0];
   }
 
   /// https://developer.mozilla.org/docs/Web/API/Window/showSaveFilePicker
   /// Exception AbortError
-  Future<FileSystemFileHandle?> showSaveFilePicker({
-    List<FilePickerAcceptType>? types,
-    bool? excludeAcceptAllOption,
-    String? suggestedName,
-  });
+  Future<FileSystemFileHandle?> showSaveFilePicker([
+    FsSaveOptions options = const FsSaveOptions(),
+  ]);
 
   /// https://developer.mozilla.org/docs/Web/API/Window/showDirectoryPicker
   /// Exception AbortError
@@ -259,11 +252,7 @@ abstract class FileSystemI {
     FsOpenOptions options = const FsOpenOptions(),
   ]) async {
     if (isSupported) {
-      final selection = await showOpenFilePicker(
-        types: options.types,
-        excludeAcceptAllOption: options.excludeAcceptAllOption,
-        multiple: options.multiple,
-      );
+      final selection = await showOpenFilePicker(options);
       return Future.wait(selection.map(
         (e) async => FileSystemFileWebSafe(
           file: await e.getFile(),
@@ -309,7 +298,9 @@ abstract class FileSystemPersistance {
   /// Useful when [FileSystem.isSupported] is false and therefore you
   /// do not have access to [FileSystemHandle]s or maybe you expect the user
   /// to delete the file referenced by the [FileSystemHandle] and you what to
-  /// keep the file's information and [ByteBuffer] data persisted.
+  /// keep the file's information and [ByteBuffer] data persisted in IndexedDB.
+  ///
+  /// Probably used in conjunction with [FileSystem.showOpenFilePickerWebSafe].
   Future<FileSystemPersistanceItem> putFile(file_selector.XFile file);
   // Map<int, FileSystemPersistanceItem> get allMap;
   List<FileSystemPersistanceItem> getAll();
@@ -317,12 +308,23 @@ abstract class FileSystemPersistance {
 
 mixin FileSystemPersistanceItem {
   int get id;
-  FileSystemHandle? get value;
+  FileSystemHandle? get handle;
+  PersistedFile? get persistedFile;
   DateTime get savedDate;
-  SavedFile? get file;
+
+  T when<T>({
+    required T Function(FileSystemHandle handle) handle,
+    required T Function(PersistedFile persistedFile) persistedFile,
+  }) {
+    if (this.handle != null) {
+      return handle(this.handle!);
+    } else {
+      return persistedFile(this.persistedFile!);
+    }
+  }
 }
 
-class SavedFile {
+class PersistedFile {
   final String name;
   final String mimeType;
   final DateTime lastModified;
@@ -330,7 +332,7 @@ class SavedFile {
   final String digestSha1Hex;
   final String? webkitRelativePath;
 
-  SavedFile({
+  PersistedFile({
     required this.name,
     required this.mimeType,
     required this.lastModified,

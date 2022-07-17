@@ -108,10 +108,10 @@ class FileSystemFileHandleIo extends FileSystemHandleIo
     implements FileSystemFileHandle {
   final XFile file;
 
+  FileSystemFileHandleIo(this.file);
+
   @override
   String get path => file.path;
-
-  FileSystemFileHandleIo(this.file);
 
   @override
   String get name => file.name;
@@ -144,7 +144,7 @@ class FileSystemFileHandleIo extends FileSystemHandleIo
 
   @override
   String toString() {
-    return 'FileSystemFileHandleIo(file: ${file.toString()})';
+    return 'FileSystemFileHandleIo(file: ${file.path})';
   }
 }
 
@@ -318,22 +318,20 @@ class FileSystem extends FileSystemI {
     FsDirectoryOptions options = const FsDirectoryOptions(),
   ]) async {
     final path = await FilePicker.platform.getDirectoryPath(
-      initialDirectory: options.startIn?.path ??
-          (options.startIn?.handle as FileSystemHandleIo?)?.path,
+      initialDirectory: _startInArg(options.startIn),
     );
     return path != null ? FileSystemDirectoryHandleIo(path) : null;
   }
 
   @override
-  Future<List<FileSystemFileHandle>> showOpenFilePicker({
-    List<FilePickerAcceptType>? types,
-    bool? excludeAcceptAllOption,
-    bool? multiple,
-  }) async {
+  Future<List<FileSystemFileHandle>> showOpenFilePicker([
+    FsOpenOptions options = const FsOpenOptions(),
+  ]) async {
     final result = await FilePicker.platform.pickFiles(
-      allowedExtensions: _allowedExtensions(types),
-      type: _fileType(types),
-      allowMultiple: multiple ?? true,
+      allowedExtensions: _allowedExtensions(options.types),
+      type: _fileType(options.types),
+      allowMultiple: options.multiple,
+      initialDirectory: _startInArg(options.startIn),
     );
     if (result == null || result.count == 0) return [];
     final list = await Future.wait(result.files.map(_xFileFromPickerFile));
@@ -341,25 +339,25 @@ class FileSystem extends FileSystemI {
   }
 
   @override
-  Future<FileSystemFileHandle?> showSaveFilePicker({
-    List<FilePickerAcceptType>? types,
-    bool? excludeAcceptAllOption,
-    String? suggestedName,
-  }) async {
+  Future<FileSystemFileHandle?> showSaveFilePicker([
+    FsSaveOptions options = const FsSaveOptions(),
+  ]) async {
     final String? filePath;
     if (Platform.isAndroid || Platform.isIOS) {
       final result = await FilePicker.platform.pickFiles(
-        allowedExtensions: _allowedExtensions(types),
-        type: _fileType(types),
+        allowedExtensions: _allowedExtensions(options.types),
+        type: _fileType(options.types),
         allowMultiple: false,
+        initialDirectory: _startInArg(options.startIn),
       );
       filePath =
           result == null || result.count == 0 ? null : result.paths.first;
     } else {
       filePath = await FilePicker.platform.saveFile(
-        allowedExtensions: _allowedExtensions(types),
-        type: _fileType(types),
-        fileName: suggestedName,
+        allowedExtensions: _allowedExtensions(options.types),
+        type: _fileType(options.types),
+        fileName: options.suggestedName,
+        initialDirectory: _startInArg(options.startIn),
       );
     }
     if (filePath == null) return null;
@@ -410,6 +408,10 @@ Future<XFile> _xFileFromPickerFile(PlatformFile file) async {
       mimeType: null,
     );
   }
+}
+
+String? _startInArg(FsStartsInOptions? startIn) {
+  return startIn?.path ?? (startIn?.handle as FileSystemHandleIo?)?.path;
 }
 
 List<String>? _allowedExtensions(List<FilePickerAcceptType>? types) {

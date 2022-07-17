@@ -4,8 +4,10 @@ import 'package:test/test.dart';
 void main() {
   test('open one file', () async {
     final handles = await FileSystem.instance.showOpenFilePicker(
-      excludeAcceptAllOption: false,
-      multiple: false,
+      const FsOpenOptions(
+        excludeAcceptAllOption: false,
+        multiple: false,
+      ),
     );
     expect(handles.length, 1);
     final fileHandle = handles.first;

@@ -566,6 +566,84 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
             ),
+            const SizedBox(width: 10),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Start In Directory'),
+                Padding(
+                  padding: const EdgeInsets.all(7.0),
+                  child: FutureBuilder<List<FileSystemHandle>>(
+                    future: state.selectedDirectoryEntries ??
+                        Future.value(const []),
+                    builder: (context, snapshot) {
+                      final innerHandles = snapshot.data;
+
+                      DropdownMenuItem<FsStartsInOptions> _itemFromHandle(
+                        FileSystemDirectoryHandle e,
+                      ) {
+                        return DropdownMenuItem(
+                          key: ValueKey(e),
+                          value: FsStartsInOptions.handle(e),
+                          child: Text(e.name),
+                        );
+                      }
+
+                      DropdownMenuItem<FsStartsInOptions> _itemFromPath(
+                        String dir,
+                      ) {
+                        return DropdownMenuItem(
+                          key: Key(dir),
+                          value: FsStartsInOptions.path(dir),
+                          child: Text(dir),
+                        );
+                      }
+
+                      final items = [
+                        const DropdownMenuItem(
+                          key: Key('default'),
+                          value: null,
+                          child: Text('default'),
+                        ),
+                        if (state.selectedDirectory.value != null)
+                          DropdownMenuItem(
+                            key: const Key('mainDir'),
+                            value: FsStartsInOptions.handle(
+                              state.selectedDirectory.value!,
+                            ),
+                            child:
+                                Text('${state.selectedDirectory.value?.name}'),
+                          ),
+                        if (innerHandles != null)
+                          ...innerHandles
+                              .whereType<FileSystemDirectoryHandle>()
+                              .map(_itemFromHandle),
+                        ...WellKnownDirectory.values.map(_itemFromPath),
+                      ];
+
+                      final selected = state.startInOption.value;
+                      if (items.every((e) => e.value != selected)) {
+                        items.add(
+                          selected!.path != null
+                              ? _itemFromPath(selected.path!)
+                              : _itemFromHandle(selected.handle!
+                                  as FileSystemDirectoryHandle),
+                        );
+                      }
+
+                      return DropdownButton<FsStartsInOptions?>(
+                        isDense: true,
+                        value: state.startInOption.value,
+                        onChanged: (v) {
+                          state.startInOption.value = v;
+                        },
+                        items: items,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
         Padding(
@@ -839,7 +917,7 @@ class AppState extends ChangeNotifier {
       persistance = await fileSystemGetPersistance();
 
       final db = await idb.idbFactoryNative.open(
-        'MainDB',
+        'fsa_MainDB',
         version: 1,
         onUpgradeNeeded: (event) {
           event.database.createObjectStore(
@@ -943,6 +1021,7 @@ class AppState extends ChangeNotifier {
     onlyImages,
     selectedFiles,
     selectedFileForSave,
+    startInOption,
     requestReadPermissions,
     requestWritePermissions,
   ];
@@ -950,7 +1029,7 @@ class AppState extends ChangeNotifier {
   static Serde<T> serdeFile<T extends FileSystemHandle?>() {
     return Serde(
       fromJson: (inner) => fileSystemGetPersistance()
-          .then((p) => p.get(inner as int)?.value as T),
+          .then((p) => p.get(inner as int)?.handle as T),
       toJson: (v) => v == null
           ? null
           : fileSystemGetPersistance()
@@ -998,6 +1077,23 @@ class AppState extends ChangeNotifier {
     if (_storageManagerInfo == null) retrieveStorageInfo();
     return _storageManagerInfo!;
   }
+
+  final AppNotifier<FsStartsInOptions?> startInOption = AppNotifier(
+    'startInOption',
+    null,
+    fromJson: (a) async => (a as Map)['path'] is String
+        ? FsStartsInOptions.path(a['path'])
+        : FsStartsInOptions.handle(
+            await serdeFile<FileSystemHandle>().fromJson!(a['handle']),
+          ),
+    toJson: (a) async => a == null
+        ? null
+        : {
+            'path': a.path,
+            if (a.handle != null)
+              'handle': await serdeFile<FileSystemHandle>().toJson!(a.handle!),
+          },
+  );
 
   final requestReadPermissions =
       AppNotifier<bool>('requestReadPermissions', true);
@@ -1082,7 +1178,9 @@ class AppState extends ChangeNotifier {
   }
 
   void selectDirectory() async {
-    final directory = await FileSystem.instance.showDirectoryPicker();
+    final directory = await FileSystem.instance.showDirectoryPicker(
+      FsDirectoryOptions(startIn: startInOption.value),
+    );
     if (directory == null) {
       _errorsController.add('No directory selected');
     } else {
@@ -1091,7 +1189,8 @@ class AppState extends ChangeNotifier {
   }
 
   void selectFiles() async {
-    final files = await FileSystem.instance.showOpenFilePicker(
+    final files = await FileSystem.instance.showOpenFilePicker(FsOpenOptions(
+      startIn: startInOption.value,
       multiple: multiple.value,
       types: [
         if (onlyImages.value)
@@ -1102,7 +1201,7 @@ class AppState extends ChangeNotifier {
             },
           )
       ],
-    );
+    ));
     if (files.isEmpty) {
       _errorsController.add('No files selected');
     } else {
@@ -1112,8 +1211,12 @@ class AppState extends ChangeNotifier {
 
   void selectCurrentFile({required bool create}) async {
     final fileHandle = create
-        ? await FileSystem.instance.showSaveFilePicker()
-        : await FileSystem.instance.showOpenSingleFilePicker();
+        ? await FileSystem.instance.showSaveFilePicker(FsSaveOptions(
+            startIn: startInOption.value,
+          ))
+        : await FileSystem.instance.showOpenSingleFilePicker(FsOpenOptions(
+            startIn: startInOption.value,
+          ));
     if (fileHandle == null) {
       _errorsController.add('No file selected');
     } else {

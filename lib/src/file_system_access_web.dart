@@ -60,6 +60,9 @@ import 'package:js/js.dart';
 //   external void readAsText(JsBlob blob);
 // }
 
+@JS('undefined')
+external Object? get _undefinedValue;
+
 @JS()
 @anonymous
 class _Promise<T> {
@@ -149,7 +152,9 @@ class _SaveFilePickerOptions {
 
     /// String | FileSystemHandle
     Object? startIn,
-    String? id,
+
+    /// String
+    Object? id,
   });
   external List<_FilePickerAcceptTypeJS>? get types; //@optional
   external bool? get excludeAcceptAllOption; //@optional
@@ -157,7 +162,9 @@ class _SaveFilePickerOptions {
 
   /// String | FileSystemHandle
   external Object? get startIn;
-  external String? get id;
+
+  /// String
+  external Object? get id;
 }
 
 @JS()
@@ -168,13 +175,17 @@ class _DirectoryPickerOptions {
 
     /// String | FileSystemHandle
     Object? startIn,
-    String? id,
+
+    /// String
+    Object? id,
   });
   external FileSystemPermissionMode get mode;
 
   /// String | FileSystemHandle
   external Object? get startIn;
-  external String? get id;
+
+  /// String
+  external Object? get id;
 }
 
 @JS()
@@ -187,7 +198,9 @@ class _OpenFilePickerOptions {
 
     /// String | FileSystemHandle
     Object? startIn,
-    String? id,
+
+    /// String
+    Object? id,
   });
   external bool? get multiple; //@optional
   external List<_FilePickerAcceptTypeJS>? get types; //@optional
@@ -195,6 +208,8 @@ class _OpenFilePickerOptions {
 
   /// String | FileSystemHandle
   external Object? get startIn;
+
+  /// String
   external String? get id;
 }
 
@@ -713,12 +728,12 @@ class _FileSystemPersistanceItemJS with FileSystemPersistanceItem {
   bool get isHandle => !hasProperty(inner.value, 'digestSha1Hex');
 
   @override
-  late final FileSystemHandle? value = isHandle
+  late final FileSystemHandle? handle = isHandle
       ? _FileSystemHandleJS.fromInner(inner.value as _FileSystemHandle)
       : null;
 
   @override
-  late final SavedFile? file =
+  late final PersistedFile? persistedFile =
       isHandle ? null : _savedFileFromValue(inner.value);
 
   @override
@@ -727,13 +742,14 @@ class _FileSystemPersistanceItemJS with FileSystemPersistanceItem {
   @override
   String toString() {
     return 'FileSystemPersistanceItem(id: $id,'
-        ' value: $value, file: $file, savedDate: $savedDate)';
+        ' handle: $handle, persistedFile: $persistedFile,'
+        ' savedDate: $savedDate)';
   }
 }
 
-SavedFile _savedFileFromValue(Object value) {
+PersistedFile _savedFileFromValue(Object value) {
   final jsObject = JsObject.jsify(value);
-  return SavedFile(
+  return PersistedFile(
     name: jsObject['name'] as String,
     mimeType: jsObject['type'] as String,
     lastModified: DateTime.fromMillisecondsSinceEpoch(
@@ -787,15 +803,15 @@ class FileSystem extends FileSystemI {
   // }
 
   @override
-  Future<List<FileSystemFileHandle>> showOpenFilePicker({
-    List<FilePickerAcceptType>? types,
-    bool? excludeAcceptAllOption,
-    bool? multiple,
-  }) {
+  Future<List<FileSystemFileHandle>> showOpenFilePicker([
+    FsOpenOptions options = const FsOpenOptions(),
+  ]) {
     final _promise = _showOpenFilePicker(_OpenFilePickerOptions(
-      multiple: multiple,
-      excludeAcceptAllOption: excludeAcceptAllOption,
-      types: _mapFilePickerTypes(types) ?? [],
+      multiple: options.multiple,
+      excludeAcceptAllOption: options.excludeAcceptAllOption,
+      types: _mapFilePickerTypes(options.types),
+      id: options.id ?? _undefinedValue,
+      startIn: _startInArg(options.startIn),
     ));
     return _pltf(_promise)
         .then<List<FileSystemFileHandle>>(
@@ -810,16 +826,16 @@ class FileSystem extends FileSystemI {
   }
 
   @override
-  Future<FileSystemFileHandle?> showSaveFilePicker({
-    List<FilePickerAcceptType>? types,
-    bool? excludeAcceptAllOption,
-    String? suggestedName,
-  }) =>
+  Future<FileSystemFileHandle?> showSaveFilePicker([
+    FsSaveOptions options = const FsSaveOptions(),
+  ]) =>
       _ptf(
         _showSaveFilePicker(_SaveFilePickerOptions(
-          excludeAcceptAllOption: excludeAcceptAllOption,
-          types: _mapFilePickerTypes(types) ?? [],
-          suggestedName: suggestedName,
+          excludeAcceptAllOption: options.excludeAcceptAllOption,
+          types: _mapFilePickerTypes(options.types),
+          suggestedName: options.suggestedName,
+          id: options.id ?? _undefinedValue,
+          startIn: _startInArg(options.startIn),
         )),
       ).then<FileSystemFileHandle?>((value) => FileSystemFileHandleJS(value))
           // TODO: distinguish AbortError from others (for example, unsupported)
@@ -837,10 +853,8 @@ class FileSystem extends FileSystemI {
   ]) =>
       _ptf(_showDirectoryPicker(_DirectoryPickerOptions(
         mode: options.mode.name,
-        id: options.id,
-        startIn: options.startIn?.path ??
-            (options.startIn?.handle as _FileSystemHandleJS?)?.inner ??
-            WellKnownDirectory.documents,
+        id: options.id ?? _undefinedValue,
+        startIn: _startInArg(options.startIn),
       )))
           .then<FileSystemDirectoryHandle?>(
               (value) => FileSystemDirectoryHandleJS(value))
@@ -872,15 +886,19 @@ class FileSystem extends FileSystemI {
       StorageManagerJS(html.window.navigator.storage!);
 }
 
+Object? _startInArg(FsStartsInOptions? startIn) {
+  return startIn?.path ??
+      (startIn?.handle as _FileSystemHandleJS?)?.inner ??
+      _undefinedValue;
+}
+
 ///
 /// UTILITIES
 ///
 
-List<_FilePickerAcceptTypeJS>? _mapFilePickerTypes(
-    List<FilePickerAcceptType>? list) {
-  if (list == null) {
-    return null;
-  }
+List<_FilePickerAcceptTypeJS> _mapFilePickerTypes(
+  List<FilePickerAcceptType> list,
+) {
   return list
       .map(
         (e) => _FilePickerAcceptTypeJS(

@@ -4,9 +4,11 @@ import 'package:meta/meta.dart';
 
 mixin FsOptionsBase {
   String? get id;
-  FsOptionsStartsIn? get startIn;
+  FsStartsInOptions? get startIn;
 }
 
+// TODO: document that this is only for web or
+// specify the corresponding path of native
 abstract class WellKnownDirectory {
   const WellKnownDirectory._();
 
@@ -16,32 +18,41 @@ abstract class WellKnownDirectory {
   static const music = 'music';
   static const pictures = 'pictures';
   static const videos = 'videos';
+
+  static const values = [
+    desktop,
+    documents,
+    downloads,
+    music,
+    pictures,
+    videos,
+  ];
 }
 
 @immutable
-class FsOptionsStartsIn {
+class FsStartsInOptions {
   /// Could be one of [WellKnownDirectory] for WEB.
   final String? path;
   final FileSystemHandle? handle;
 
-  const FsOptionsStartsIn.path(
+  const FsStartsInOptions.path(
     String this.path,
   ) : handle = null;
 
-  const FsOptionsStartsIn.handle(
+  const FsStartsInOptions.handle(
     FileSystemHandle this.handle,
   ) : path = null;
 
   @override
   String toString() {
-    return 'FsOptionsStartsIn(path: $path, handle: $handle)';
+    return 'FsStartsInOptions(path: $path, handle: $handle)';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
-    return other is FsOptionsStartsIn &&
+    return other is FsStartsInOptions &&
         other.path == path &&
         other.handle == handle;
   }
@@ -56,7 +67,7 @@ mixin FsPicketOptionsBase implements FsOptionsBase {
   @override
   String? get id;
   @override
-  FsOptionsStartsIn? get startIn;
+  FsStartsInOptions? get startIn;
   List<FilePickerAcceptType> get types;
   bool get excludeAcceptAllOption;
 }
@@ -70,7 +81,7 @@ class FsOpenOptions with FsPicketOptionsBase {
   @override
   final String? id;
   @override
-  final FsOptionsStartsIn? startIn;
+  final FsStartsInOptions? startIn;
 
   final bool multiple;
 
@@ -86,7 +97,7 @@ class FsOpenOptions with FsPicketOptionsBase {
     List<FilePickerAcceptType>? types,
     bool? excludeAcceptAllOption,
     String? id,
-    FsOptionsStartsIn? startIn,
+    FsStartsInOptions? startIn,
     bool? multiple,
   }) {
     return FsOpenOptions(
@@ -137,7 +148,7 @@ class FsSaveOptions with FsPicketOptionsBase {
   @override
   final String? id;
   @override
-  final FsOptionsStartsIn? startIn;
+  final FsStartsInOptions? startIn;
 
   final String? suggestedName;
 
@@ -153,7 +164,7 @@ class FsSaveOptions with FsPicketOptionsBase {
     List<FilePickerAcceptType>? types,
     bool? excludeAcceptAllOption,
     String? id,
-    FsOptionsStartsIn? startIn,
+    FsStartsInOptions? startIn,
     String? suggestedName,
   }) {
     return FsSaveOptions(
@@ -200,7 +211,7 @@ class FsDirectoryOptions with FsOptionsBase {
   @override
   final String? id;
   @override
-  final FsOptionsStartsIn? startIn;
+  final FsStartsInOptions? startIn;
 
   final FileSystemPermissionMode mode;
 
@@ -212,7 +223,7 @@ class FsDirectoryOptions with FsOptionsBase {
 
   FsDirectoryOptions copyWith({
     String? id,
-    FsOptionsStartsIn? startIn,
+    FsStartsInOptions? startIn,
     FileSystemPermissionMode? mode,
   }) {
     return FsDirectoryOptions(
