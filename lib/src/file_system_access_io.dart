@@ -99,8 +99,8 @@ class FileSystemWritableFileStreamIo extends FileSystemWritableFileStream {
 
   @override
   String toString() {
-    return 'FileSystemWritableFileStreamIo(file: ${file.toString()}, '
-        'keepExistingData:$keepExistingData, sink: ${sink.toString()})';
+    return 'FileSystemWritableFileStreamIo(file: ${file}, '
+        'keepExistingData:$keepExistingData, sink: ${sink})';
   }
 }
 
@@ -140,6 +140,13 @@ class FileSystemFileHandleIo extends FileSystemHandleIo
       return other.file.path == file.path && other.file.name == file.name;
     }
     return false;
+  }
+
+  @override
+  Future<void> remove({
+    bool? recursive,
+  }) async {
+    await File(path).delete(recursive: recursive ?? false);
   }
 
   @override
@@ -298,6 +305,13 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
 
   @override
   final FileSystemHandleKind kind = FileSystemHandleKind.directory;
+
+  @override
+  Future<void> remove({
+    bool? recursive,
+  }) async {
+    await Directory(path).delete(recursive: recursive ?? false);
+  }
 
   @override
   String toString() {

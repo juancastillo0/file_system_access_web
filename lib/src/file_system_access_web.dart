@@ -8,13 +8,16 @@ library file_system_access;
 
 import 'dart:async';
 import 'dart:html' as html;
-import 'dart:js';
-import 'dart:js_util';
+import 'dart:js_interop' as js;
+import 'dart:js_interop' show FunctionToJSExportedDartFunction;
+import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:file_system_access/file_system_access.dart';
 import 'package:file_system_access/src/utils.dart';
 import 'package:js/js.dart';
+import 'package:js/js_util.dart';
+import 'package:web/web.dart' as web;
 
 // @JS()
 // @anonymous
@@ -81,6 +84,7 @@ abstract class _FileSystemHandle {
       [_FileSystemHandlePermissionDescriptor? descriptor]);
   external _Promise<String /*PermissionStateEnum*/ > requestPermission(
       [_FileSystemHandlePermissionDescriptor? descriptor]);
+  external _Promise<void> remove([_FileSystemHandleRemoveOptions? options]);
 }
 
 abstract class _FileSystemHandleJS extends FileSystemHandle {
@@ -126,6 +130,12 @@ abstract class _FileSystemHandleJS extends FileSystemHandle {
       )).then((value) => parseEnum(value, PermissionStateEnum.values)!);
 
   @override
+  Future<void> remove({
+    bool? recursive,
+  }) =>
+      _ptf(inner.remove(_FileSystemHandleRemoveOptions(recursive: recursive)));
+
+  @override
   String toString() {
     return 'FileSystemHandle(kind: ${inner.kind}, name: "$name")';
   }
@@ -139,7 +149,8 @@ class _FilePickerAcceptTypeJS {
     required Object accept,
   });
   external String? get description; //@optional
-  external Object /*Map<String, List<String> /*String | String[]*/ >*/ get accept;
+  external Object /*Map<String, List<String> /*String | String[]*/ >*/
+      get accept;
 }
 
 @JS()
@@ -244,6 +255,14 @@ class _FileSystemHandlePermissionDescriptor {
   //     FileSystemHandlePermissionDescriptor(mode: "readwrite");
 
   external String? get mode; //@optional
+}
+
+@JS()
+@anonymous
+class _FileSystemHandleRemoveOptions {
+  external factory _FileSystemHandleRemoveOptions({bool? recursive});
+
+  external bool? get recursive; //@optional
 }
 
 @JS()
@@ -748,7 +767,7 @@ class _FileSystemPersistanceItemJS with FileSystemPersistanceItem {
 }
 
 PersistedFile _savedFileFromValue(Object value) {
-  final jsObject = JsObject.jsify(value);
+  final jsObject = value.toJSBox;
   return PersistedFile(
     name: jsObject['name'] as String,
     mimeType: jsObject['type'] as String,
@@ -830,14 +849,17 @@ class FileSystem extends FileSystemI {
     FsSaveOptions options = const FsSaveOptions(),
   ]) =>
       _ptf(
-        _showSaveFilePicker(_SaveFilePickerOptions(
-          excludeAcceptAllOption: options.excludeAcceptAllOption,
-          types: _mapFilePickerTypes(options.types),
-          suggestedName: options.suggestedName,
-          id: options.id ?? _undefinedValue,
-          startIn: _startInArg(options.startIn),
-        )),
-      ).then<FileSystemFileHandle?>((value) => FileSystemFileHandleJS(value))
+        _showSaveFilePicker(
+          _SaveFilePickerOptions(
+            excludeAcceptAllOption: options.excludeAcceptAllOption,
+            types: _mapFilePickerTypes(options.types),
+            suggestedName: options.suggestedName,
+            id: options.id ?? _undefinedValue,
+            startIn: _startInArg(options.startIn),
+          ),
+        ),
+      )
+          .then<FileSystemFileHandle?>((value) => FileSystemFileHandleJS(value))
           // TODO: distinguish AbortError from others (for example, unsupported)
           .onError((Object error, _) {
         if (error is html.DomException &&

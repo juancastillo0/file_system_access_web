@@ -36,6 +36,10 @@ abstract class FileSystemHandle {
   Future<PermissionStateEnum> requestPermission({
     FileSystemPermissionMode? mode,
   });
+
+  Future<void> remove({
+    bool? recursive,
+  });
 }
 
 /// https://developer.mozilla.org/docs/Web/API/window/showOpenFilePicker
