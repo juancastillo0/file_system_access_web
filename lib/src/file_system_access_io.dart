@@ -395,6 +395,13 @@ class FileSystem extends FileSystemI {
       );
 
   @override
+  Stream<DropFileEvent> webDropFileEvents() {
+    throw UnimplementedError(
+      '`FileSystem.webDropFileEvents` is only implemented in WEB.',
+    );
+  }
+
+  @override
   FileSystemHandle? getIoNativeHandleFromPath(String path) {
     final type = FileSystemEntity.typeSync(path);
 

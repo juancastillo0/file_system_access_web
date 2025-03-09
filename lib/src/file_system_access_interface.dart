@@ -289,8 +289,29 @@ abstract class FileSystemI {
 
   /// Only available for the WEB platform.
   StorageManager get storageManager;
+
+  /// Only available for the WEB platform.
+  Stream<DropFileEvent> webDropFileEvents();
+
   /// Only available for Native platforms.
   FileSystemHandle? getIoNativeHandleFromPath(String path);
+}
+
+class DropFileEvent {
+  // TODO: improve, distinguish between drag and drop
+  final List<FileSystemFileWebSafe> files;
+  final int clientX;
+  final int clientY;
+  final double pageX;
+  final double pageY;
+
+  const DropFileEvent({
+    required this.files,
+    required this.clientX,
+    required this.clientY,
+    required this.pageX,
+    required this.pageY,
+  });
 }
 
 abstract class FileSystemPersistance {
