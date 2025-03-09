@@ -393,6 +393,20 @@ class FileSystem extends FileSystemI {
   StorageManager get storageManager => throw UnimplementedError(
         '`FileSystem.storageManager` is only implemented in WEB.',
       );
+
+  @override
+  FileSystemHandle? getIoNativeHandleFromPath(String path) {
+    final type = FileSystemEntity.typeSync(path);
+
+    if (type == FileSystemEntityType.file) {
+      final file = XFile(path);
+      return FileSystemFileHandleIo(file);
+    } else if (type == FileSystemEntityType.directory) {
+      return FileSystemDirectoryHandleIo(path);
+    } else {
+      return null;
+    }
+  }
 }
 
 const _kIsWeb = identical(0, 0.0);

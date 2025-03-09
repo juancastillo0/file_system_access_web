@@ -906,6 +906,12 @@ class FileSystem extends FileSystemI {
   @override
   StorageManager get storageManager =>
       StorageManagerJS(html.window.navigator.storage!);
+
+  @override
+  FileSystemHandle? getIoNativeHandleFromPath(String path) =>
+      throw UnimplementedError(
+        '`FileSystem.getIoNativeHandleFromPath` is only implemented in Native.',
+      );
 }
 
 Object? _startInArg(FsStartsInOptions? startIn) {

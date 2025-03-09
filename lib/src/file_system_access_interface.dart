@@ -289,6 +289,8 @@ abstract class FileSystemI {
 
   /// Only available for the WEB platform.
   StorageManager get storageManager;
+  /// Only available for Native platforms.
+  FileSystemHandle? getIoNativeHandleFromPath(String path);
 }
 
 abstract class FileSystemPersistance {
