@@ -1,19 +1,19 @@
 name: file_system_access
-description: A new Flutter package project.
+description: High level File System Access web API bindings for Dart and Flutter. https://developer.mozilla.org/Web/API/File_System_Access_API
 version: 0.0.1
-homepage:
+homepage: https://github.com/juancastillo0/file_system_access_web
 
 environment:
-  sdk: ">=2.17.0 <3.0.0"
+  sdk: ">=2.17.0 <4.0.0"
 
 dependencies:
   js: ^0.6.0
-  file_selector: ^0.8.0
+  file_selector: ^1.0.3
   meta: ^1.0.0
-  file_picker: ^4.0.0
+  file_picker: ^8.3.3
 
 dev_dependencies:
   test: ^1.0.0
-  lint: ^1.0.0
+  lint: ^2.3.0
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
