@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_system_access/file_system_access.dart';
 import 'package:file_system_access/src/utils.dart';
 import 'package:meta/meta.dart';
@@ -12,7 +14,7 @@ abstract class SerializedFileEntity {
   }) = SerializedDirectory;
   const factory SerializedFileEntity.file({
     required String name,
-    required String content,
+    required Uint8List content,
   }) = SerializedFile;
 
   String get name;
@@ -20,7 +22,7 @@ abstract class SerializedFileEntity {
   _T when<_T>({
     required _T Function(String name, List<SerializedFileEntity> entities)
         directory,
-    required _T Function(String name, String content) file,
+    required _T Function(String name, Uint8List content) file,
   }) {
     final v = this;
     if (v is SerializedDirectory) {
@@ -34,7 +36,7 @@ abstract class SerializedFileEntity {
   _T maybeWhen<_T>({
     required _T Function() orElse,
     _T Function(String name, List<SerializedFileEntity> entities)? directory,
-    _T Function(String name, String content)? file,
+    _T Function(String name, Uint8List content)? file,
   }) {
     final v = this;
     if (v is SerializedDirectory) {
@@ -215,7 +217,7 @@ class SerializedDirectory extends SerializedFileEntity {
 class SerializedFile extends SerializedFileEntity {
   @override
   final String name;
-  final String content;
+  final Uint8List content;
 
   const SerializedFile({
     required this.name,
@@ -227,7 +229,7 @@ class SerializedFile extends SerializedFileEntity {
 
   static Future<SerializedFile> fromHandle(FileSystemFileHandle handle) async {
     final file = await handle.getFile();
-    final content = await file.readAsString();
+    final content = await file.readAsBytes();
     return SerializedFile(
       content: content,
       name: file.name,
@@ -237,7 +239,7 @@ class SerializedFile extends SerializedFileEntity {
   static SerializedFile fromJson(Map<String, dynamic> map) {
     return SerializedFile(
       name: map['name'] as String,
-      content: map['content'] as String,
+      content: map['content'] as Uint8List,
     );
   }
 

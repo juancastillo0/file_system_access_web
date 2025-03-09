@@ -217,7 +217,7 @@ Future<Result<FileSystemFileHandle, BaseFileError>> saveFile(
       final writable = await file.createWritable();
 
       await writable.write(
-        FileSystemWriteChunkType.string(serializedFile.content),
+        FileSystemWriteChunkType.bufferSource(serializedFile.content.buffer),
       );
       await writable.close();
 
