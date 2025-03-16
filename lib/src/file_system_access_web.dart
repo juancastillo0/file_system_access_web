@@ -780,6 +780,11 @@ PersistedFile _savedFileFromValue(Object value) {
   );
 }
 
+// TODO: implement proper new JS interop
+// extension type CustomEvent(JSObject o) implements web.DragEvent {
+//   // declare whatever custom properties here
+// }
+
 class FileSystem extends FileSystemI {
   const FileSystem._();
 
@@ -828,44 +833,72 @@ class FileSystem extends FileSystemI {
     if (_dropFileEvents != null) return _dropFileEvents!.stream;
 
     _dropFileEvents = StreamController<DropFileEvent>.broadcast();
-    web.window.addEventListener(
-      'dragover',
-      ((web.DragEvent e) {
-        if (_dropFileEvents == null) return;
-        // prevent default to allow drop
+
+    void Function(web.DragEvent) dragFunction(DropFileEventType type) {
+      return (web.DragEvent e) {
         e.preventDefault();
 
         _dropFileEvents!.add(
           DropFileEvent(
-            files: [],
+            items: const [],
+            type: type,
             clientX: e.clientX,
             clientY: e.clientY,
             pageX: e.pageX,
             pageY: e.pageY,
           ),
         );
-      }).toJS,
-    );
-    web.window.addEventListener(
-      'drop',
-      ((web.DragEvent e) {
-        if (_dropFileEvents == null) return;
-        // prevent default action (open as a link for some elements)
-        e.preventDefault();
+      };
+    }
 
-        if (e.dataTransfer == null) return;
-        final items = e.dataTransfer!.items;
-        Future.wait(
-          List.generate(items.length, (i) async {
-            final item = items[i];
-            // TODO: directory
-            if (item.kind == 'file') {
-              final file = item.getAsFile();
-              if (file == null) return null;
-              final handlePromise = isSupported
-                  ? callMethod(item, 'getAsFileSystemHandle', [])
-                  : null;
-              final data = await file.arrayBuffer().toDart;
+    web.window.ondragover = dragFunction(DropFileEventType.dragOver).toJS;
+    web.window.ondragenter = dragFunction(DropFileEventType.dragEnter).toJS;
+    web.window.ondragleave = dragFunction(DropFileEventType.dragLeave).toJS;
+
+    Future<FileSystemItemWebSafe?> handleFileSystemEntry(
+      web.FileSystemEntry entry,
+      FileSystemHandle? handle,
+    ) async {
+      if (entry.isDirectory) {
+        final dir = entry as web.FileSystemDirectoryEntry;
+        final completer = Completer<FileSystemItemWebSafe>();
+        final h = handle as FileSystemDirectoryHandle?;
+        dir.createReader().readEntries(
+              ((js.JSArray<web.FileSystemEntry> entries) {
+                Future.wait(
+                  entries.toDart.map(
+                    (e) async {
+                      FileSystemHandle? entryHandle;
+                      if (h != null) {
+                        final handle = await (e.isDirectory
+                            ? h.getDirectoryHandle(e.name)
+                            : h.getFileHandle(e.name));
+                        entryHandle = handle.okOrNull;
+                      }
+                      return handleFileSystemEntry(e, entryHandle);
+                    },
+                  ).toList(),
+                ).then((children) {
+                  completer.complete(
+                    FileSystemDirectoryWebSafe(
+                      children:
+                          children.whereType<FileSystemItemWebSafe>().toList(),
+                      name: dir.name,
+                      path: dir.fullPath,
+                      handle: h,
+                    ),
+                  );
+                });
+              }).toJS,
+            );
+
+        return completer.future;
+      } else if (entry.isFile) {
+        final f = entry as web.FileSystemFileEntry;
+        final completer = Completer<FileSystemItemWebSafe>();
+        f.file(
+          ((web.File file) {
+            file.arrayBuffer().toDart.then((data) {
               final xfile = XFile.fromData(
                 data.toDart.asUint8List(),
                 mimeType: file.type,
@@ -873,34 +906,61 @@ class FileSystem extends FileSystemI {
                 length: file.size,
                 lastModified:
                     DateTime.fromMillisecondsSinceEpoch(file.lastModified),
+                path: f.fullPath,
               );
+              completer.complete(
+                FileSystemFileWebSafe(
+                  file: xfile,
+                  handle: handle as FileSystemFileHandle?,
+                ),
+              );
+            });
+          }).toJS,
+        );
 
-              FileSystemFileHandle? handle;
-              if (isSupported) {
-                final jsHandle = (await _ptf(handlePromise as _Promise))!
-                    as _FileSystemHandle;
-                handle = _FileSystemHandleJS.fromInner(jsHandle)
-                    as FileSystemFileHandle;
-              }
-              return FileSystemFileWebSafe(file: xfile, handle: handle);
-            }
-          }),
-        ).then((files) {
-          final mappedFiles = files.whereType<FileSystemFileWebSafe>().toList();
-          if (mappedFiles.isNotEmpty) {
-            _dropFileEvents!.add(
-              DropFileEvent(
-                files: mappedFiles,
-                clientX: e.clientX,
-                clientY: e.clientY,
-                pageX: e.pageX,
-                pageY: e.pageY,
-              ),
-            );
+        return completer.future;
+      }
+      return null;
+    }
+
+    web.window.ondrop = ((web.DragEvent e) {
+      if (_dropFileEvents == null) return;
+      // prevent default action (open as a link for some elements)
+      e.preventDefault();
+
+      if (e.dataTransfer == null) return;
+      final items = e.dataTransfer!.items;
+      Future.wait(
+        List.generate(items.length, (i) async {
+          final item = items[i];
+          final entry = item.webkitGetAsEntry()!;
+          final handlePromise = FileSystem.instance.isSupported
+              ? callMethod(item, 'getAsFileSystemHandle', [])
+              : null;
+          FileSystemHandle? handle;
+          if (handlePromise != null) {
+            final jsHandle =
+                (await _ptf(handlePromise as _Promise))! as _FileSystemHandle;
+            handle = _FileSystemHandleJS.fromInner(jsHandle);
           }
-        });
-      }).toJS,
-    );
+          return handleFileSystemEntry(entry, handle);
+        }),
+      ).then((files) {
+        final mappedFiles = files.whereType<FileSystemItemWebSafe>().toList();
+        if (mappedFiles.isNotEmpty) {
+          _dropFileEvents!.add(
+            DropFileEvent(
+              items: mappedFiles,
+              type: DropFileEventType.drop,
+              clientX: e.clientX,
+              clientY: e.clientY,
+              pageX: e.pageX,
+              pageY: e.pageY,
+            ),
+          );
+        }
+      });
+    }).toJS;
     return _dropFileEvents!.stream;
   }
 

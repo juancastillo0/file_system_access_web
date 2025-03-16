@@ -298,20 +298,28 @@ abstract class FileSystemI {
 }
 
 class DropFileEvent {
-  // TODO: improve, distinguish between drag and drop
-  final List<FileSystemFileWebSafe> files;
+  final DropFileEventType type;
+  final List<FileSystemItemWebSafe> items;
   final int clientX;
   final int clientY;
   final double pageX;
   final double pageY;
 
   const DropFileEvent({
-    required this.files,
+    required this.type,
+    required this.items,
     required this.clientX,
     required this.clientY,
     required this.pageX,
     required this.pageY,
   });
+}
+
+enum DropFileEventType {
+  dragEnter,
+  dragOver,
+  dragLeave,
+  drop,
 }
 
 abstract class FileSystemPersistance {
@@ -377,14 +385,59 @@ class PersistedFile {
   );
 }
 
-class FileSystemFileWebSafe {
+abstract class FileSystemItemWebSafe {
+  FileSystemItemWebSafe._();
+
+  /// Not null if the browser does not support the File System Access API.
+  FileSystemHandle? get handle;
+
+  /// Executes the provided function based on the type of this instance.
+  T map<T>({
+    required T Function(FileSystemDirectoryWebSafe directory) directory,
+    required T Function(FileSystemFileWebSafe file) file,
+  });
+}
+
+class FileSystemFileWebSafe extends FileSystemItemWebSafe {
+  @override
   final FileSystemFileHandle? handle;
   final file_selector.XFile file;
 
   FileSystemFileWebSafe({
     this.handle,
     required this.file,
-  });
+  }) : super._();
+
+  @override
+  T map<T>({
+    required T Function(FileSystemDirectoryWebSafe directory) directory,
+    required T Function(FileSystemFileWebSafe file) file,
+  }) {
+    return file(this);
+  }
+}
+
+class FileSystemDirectoryWebSafe extends FileSystemItemWebSafe {
+  final List<FileSystemItemWebSafe> children;
+  final String name;
+  final String path;
+  @override
+  final FileSystemDirectoryHandle? handle;
+
+  FileSystemDirectoryWebSafe({
+    required this.children,
+    required this.name,
+    required this.path,
+    required this.handle,
+  }) : super._();
+
+  @override
+  T map<T>({
+    required T Function(FileSystemDirectoryWebSafe directory) directory,
+    required T Function(FileSystemFileWebSafe file) file,
+  }) {
+    return directory(this);
+  }
 }
 
 abstract class StorageEstimate {
