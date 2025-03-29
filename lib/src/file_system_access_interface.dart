@@ -282,7 +282,7 @@ abstract class FileSystemI {
   }
 
   /// Only available for the WEB platform.
-  Future<FileSystemPersistance> getPersistance({
+  Future<FileSystemPersistence> getPersistence({
     String databaseName = 'FilesDB',
     String objectStoreName = 'FilesObjectStore',
   });
@@ -322,10 +322,10 @@ enum DropFileEventType {
   drop,
 }
 
-abstract class FileSystemPersistance {
-  FileSystemPersistanceItem? get(int id);
-  Future<FileSystemPersistanceItem?> delete(int id);
-  Future<FileSystemPersistanceItem> put(
+abstract class FileSystemPersistence {
+  FileSystemPersistenceItem? get(int id);
+  Future<FileSystemPersistenceItem?> delete(int id);
+  Future<FileSystemPersistenceItem> put(
     FileSystemHandle handle,
     // TODO: { int? id, }
   );
@@ -336,12 +336,12 @@ abstract class FileSystemPersistance {
   /// keep the file's information and [ByteBuffer] data persisted in IndexedDB.
   ///
   /// Probably used in conjunction with [FileSystem.showOpenFilePickerWebSafe].
-  Future<FileSystemPersistanceItem> putFile(file_selector.XFile file);
-  // Map<int, FileSystemPersistanceItem> get allMap;
-  List<FileSystemPersistanceItem> getAll();
+  Future<FileSystemPersistenceItem> putFile(file_selector.XFile file);
+  // Map<int, FileSystemPersistenceItem> get allMap;
+  List<FileSystemPersistenceItem> getAll();
 }
 
-mixin FileSystemPersistanceItem {
+mixin FileSystemPersistenceItem {
   int get id;
   FileSystemHandle? get handle;
   PersistedFile? get persistedFile;

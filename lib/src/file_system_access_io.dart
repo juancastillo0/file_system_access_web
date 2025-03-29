@@ -379,12 +379,12 @@ class FileSystem extends FileSystemI {
   }
 
   @override
-  Future<FileSystemPersistance> getPersistance({
+  Future<FileSystemPersistence> getPersistence({
     String databaseName = 'FilesDB',
     String objectStoreName = 'FilesObjectStore',
   }) =>
       throw UnsupportedError(
-        '`FileSystem.getPersistance()` is only supported for WEB.'
+        '`FileSystem.getPersistence()` is only supported for WEB.'
         ' You could save the Directory or File path in your'
         ' selected storage method for native platforms.',
       );

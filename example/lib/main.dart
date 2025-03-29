@@ -910,11 +910,11 @@ class AppState extends ChangeNotifier {
 
   static const _storeName = 'AppState';
 
-  static FileSystemPersistance? persistance;
+  static FileSystemPersistence? persistence;
 
   void _setUpDB() async {
     try {
-      persistance = await fileSystemGetPersistance();
+      persistence = await fileSystemGetPersistence();
 
       final db = await idb.idbFactoryNative.open(
         'fsa_MainDB',
@@ -1028,11 +1028,11 @@ class AppState extends ChangeNotifier {
 
   static Serde<T> serdeFile<T extends FileSystemHandle?>() {
     return Serde(
-      fromJson: (inner) => fileSystemGetPersistance()
+      fromJson: (inner) => fileSystemGetPersistence()
           .then((p) => p.get(inner as int)?.handle as T),
       toJson: (v) => v == null
           ? null
-          : fileSystemGetPersistance()
+          : fileSystemGetPersistence()
               .then((p) => p.put(v))
               .then((value) => value.id),
     );
@@ -1458,8 +1458,8 @@ class FileSystemItemsStatus<T> {
   }
 }
 
-Future<FileSystemPersistance> fileSystemGetPersistance() {
-  return FileSystem.instance.getPersistance(
+Future<FileSystemPersistence> fileSystemGetPersistence() {
+  return FileSystem.instance.getPersistence(
     databaseName: 'fsa_FilesDB',
     objectStoreName: 'fsa_FilesObjectStore',
   );

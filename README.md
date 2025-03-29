@@ -52,7 +52,7 @@ The `DirectorySynchronizer` class allows you to sync an in-memory and editable d
 
 ## Persistence with `getPersistence`
 
-The `FileSystemPersistance` returned by `getPersistence` allows you to save a `FileSystemHandle` in the browser's IndexedDB. This is useful for maintaining the application state between sessions inside the browser.
+The `FileSystemPersistence` returned by `getPersistence` allows you to save a `FileSystemHandle` in the browser's IndexedDB. This is useful for maintaining the application state between sessions inside the browser.
 
 This API is only available in web, you could save the path String in native platforms.
 

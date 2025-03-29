@@ -655,8 +655,8 @@ external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker(
     [_DirectoryPickerOptions? options]);
 
 @JS('getFileSystemAccessFilePersistence')
-external _Promise<_FileSystemPersistance> _getFileSystemAccessFilePersistence([
-  _FileSystemPersistanceParams? params,
+external _Promise<_FileSystemPersistence> _getFileSystemAccessFilePersistence([
+  _FileSystemPersistenceParams? params,
 ]);
 
 @JS('navigator.storage.getDirectory')
@@ -664,8 +664,8 @@ external _Promise<_FileSystemDirectoryHandle> _navigatorStorageGetDirectory();
 
 @JS()
 @anonymous
-abstract class _FileSystemPersistanceParams {
-  external factory _FileSystemPersistanceParams({
+abstract class _FileSystemPersistenceParams {
+  external factory _FileSystemPersistenceParams({
     String? databaseName,
     String? objectStoreName,
   });
@@ -673,51 +673,51 @@ abstract class _FileSystemPersistanceParams {
 
 @JS()
 @anonymous
-abstract class _FileSystemPersistance {
-  external _FileSystemPersistanceItem? get(int id);
-  external List<_FileSystemPersistanceItem> getAll();
-  external _Promise<_FileSystemPersistanceItem?> delete(int id);
-  external _Promise<_FileSystemPersistanceItem> put(Object handle);
-  // external Map<int, _FileSystemPersistanceItem> get allMap;
+abstract class _FileSystemPersistence {
+  external _FileSystemPersistenceItem? get(int id);
+  external List<_FileSystemPersistenceItem> getAll();
+  external _Promise<_FileSystemPersistenceItem?> delete(int id);
+  external _Promise<_FileSystemPersistenceItem> put(Object handle);
+  // external Map<int, _FileSystemPersistenceItem> get allMap;
   external List<int> keys();
 }
 
 @JS()
 @anonymous
-abstract class _FileSystemPersistanceItem {
+abstract class _FileSystemPersistenceItem {
   external int get id;
   external Object get value;
   external DateTime get savedDate;
 }
 
-class _FileSystemPersistanceJS implements FileSystemPersistance {
-  final _FileSystemPersistance inner;
+class _FileSystemPersistenceJS implements FileSystemPersistence {
+  final _FileSystemPersistence inner;
 
-  _FileSystemPersistanceJS(this.inner);
+  _FileSystemPersistenceJS(this.inner);
 
   @override
-  _FileSystemPersistanceItemJS? get(int id) {
+  _FileSystemPersistenceItemJS? get(int id) {
     final value = inner.get(id);
-    return value == null ? null : _FileSystemPersistanceItemJS(value);
+    return value == null ? null : _FileSystemPersistenceItemJS(value);
   }
 
   @override
-  List<_FileSystemPersistanceItemJS> getAll() =>
-      inner.getAll().map((e) => _FileSystemPersistanceItemJS(e)).toList();
+  List<_FileSystemPersistenceItemJS> getAll() =>
+      inner.getAll().map((e) => _FileSystemPersistenceItemJS(e)).toList();
 
   @override
-  Future<_FileSystemPersistanceItemJS?> delete(int id) =>
+  Future<_FileSystemPersistenceItemJS?> delete(int id) =>
       _ptf(inner.delete(id)).then((value) {
-        return value == null ? null : _FileSystemPersistanceItemJS(value);
+        return value == null ? null : _FileSystemPersistenceItemJS(value);
       });
 
   @override
-  Future<_FileSystemPersistanceItemJS> put(FileSystemHandle handle) =>
+  Future<_FileSystemPersistenceItemJS> put(FileSystemHandle handle) =>
       _ptf(inner.put((handle as _FileSystemHandleJS).inner))
-          .then(_FileSystemPersistanceItemJS.new);
+          .then(_FileSystemPersistenceItemJS.new);
 
   @override
-  Future<_FileSystemPersistanceItemJS> putFile(XFile file) async {
+  Future<_FileSystemPersistenceItemJS> putFile(XFile file) async {
     final array = await file.readAsBytes();
     final _file = html.File(
       [array.buffer],
@@ -727,19 +727,19 @@ class _FileSystemPersistanceJS implements FileSystemPersistance {
         'type': file.mimeType,
       },
     );
-    return _ptf(inner.put(_file)).then(_FileSystemPersistanceItemJS.new);
+    return _ptf(inner.put(_file)).then(_FileSystemPersistenceItemJS.new);
   }
 
-  // Map<int, _FileSystemPersistanceItemJS> get allMap => inner.allMap
-  //   .map((key, value) => MapEntry(key, _FileSystemPersistanceItemJS(value)));
+  // Map<int, _FileSystemPersistenceItemJS> get allMap => inner.allMap
+  //   .map((key, value) => MapEntry(key, _FileSystemPersistenceItemJS(value)));
 
   List<int> keys() => inner.keys();
 }
 
-class _FileSystemPersistanceItemJS with FileSystemPersistanceItem {
-  final _FileSystemPersistanceItem inner;
+class _FileSystemPersistenceItemJS with FileSystemPersistenceItem {
+  final _FileSystemPersistenceItem inner;
 
-  _FileSystemPersistanceItemJS(this.inner);
+  _FileSystemPersistenceItemJS(this.inner);
 
   @override
   int get id => inner.id;
@@ -760,7 +760,7 @@ class _FileSystemPersistanceItemJS with FileSystemPersistanceItem {
 
   @override
   String toString() {
-    return 'FileSystemPersistanceItem(id: $id,'
+    return 'FileSystemPersistenceItem(id: $id,'
         ' handle: $handle, persistedFile: $persistedFile,'
         ' savedDate: $savedDate)';
   }
@@ -1032,19 +1032,19 @@ class FileSystem extends FileSystemI {
         throw error;
       });
 
-  static Future<FileSystemPersistance>? _persistence;
+  static Future<FileSystemPersistence>? _persistence;
 
   @override
-  Future<FileSystemPersistance> getPersistance({
+  Future<FileSystemPersistence> getPersistence({
     String databaseName = 'FilesDB',
     String objectStoreName = 'FilesObjectStore',
   }) =>
       _persistence ??= _ptf(_getFileSystemAccessFilePersistence(
-        _FileSystemPersistanceParams(
+        _FileSystemPersistenceParams(
           databaseName: databaseName,
           objectStoreName: objectStoreName,
         ),
-      )).then((value) => _FileSystemPersistanceJS(value));
+      )).then((value) => _FileSystemPersistenceJS(value));
 
   @override
   StorageManager get storageManager =>
