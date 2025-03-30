@@ -33,7 +33,7 @@ jobs:
       #  run: flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: Build web
-        run: cd example && flutter build web --release --web-renderer canvaskit --base-href /file_system_access_web/ && cd ..
+        run: cd example && flutter build web --release --base-href /file_system_access_web/ && cd ..
       
       # - name: patch service worker
       #   run: dart patch_service_worker.dart
