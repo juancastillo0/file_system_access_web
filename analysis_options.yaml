@@ -11,6 +11,7 @@ linter:
     prefer_if_elements_to_conditional_expressions: false
     unnecessary_brace_in_string_interps: false
     no_leading_underscores_for_local_identifiers: false
+    sort_pub_dependencies: false
 
     type_annotate_public_apis: true
     avoid_redundant_argument_values: false
@@ -39,3 +40,5 @@ analyzer:
     missing_return: error
     unrelated_type_equality_checks: error
     null_check_on_nullable_type_parameter: warning
+    exhaustive_cases: warning
+    library_private_types_in_public_api: error

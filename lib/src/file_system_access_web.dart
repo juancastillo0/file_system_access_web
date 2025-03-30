@@ -80,10 +80,12 @@ abstract class _FileSystemHandle {
   external String get name;
 
   external _Promise<bool> isSameEntry(_FileSystemHandle other);
-  external _Promise<String /*PermissionStateEnum*/ > queryPermission(
-      [_FileSystemHandlePermissionDescriptor? descriptor]);
-  external _Promise<String /*PermissionStateEnum*/ > requestPermission(
-      [_FileSystemHandlePermissionDescriptor? descriptor]);
+  external _Promise<String /*PermissionStateEnum*/ > queryPermission([
+    _FileSystemHandlePermissionDescriptor? descriptor,
+  ]);
+  external _Promise<String /*PermissionStateEnum*/ > requestPermission([
+    _FileSystemHandlePermissionDescriptor? descriptor,
+  ]);
   external _Promise<void> remove([_FileSystemHandleRemoveOptions? options]);
 }
 
@@ -94,8 +96,8 @@ abstract class _FileSystemHandleJS extends FileSystemHandle {
 
   factory _FileSystemHandleJS.fromInner(_FileSystemHandle inner) =>
       inner.kind == FileSystemHandleKind.directory.name
-          ? FileSystemDirectoryHandleJS(inner as _FileSystemDirectoryHandle)
-          : FileSystemFileHandleJS(inner as _FileSystemFileHandle);
+          ? _FileSystemDirectoryHandleJS(inner as _FileSystemDirectoryHandle)
+          : _FileSystemFileHandleJS(inner as _FileSystemFileHandle);
 
   @override
   Future<bool> isSameEntry(FileSystemHandle other) =>
@@ -113,21 +115,25 @@ abstract class _FileSystemHandleJS extends FileSystemHandle {
   Future<PermissionStateEnum> queryPermission({
     FileSystemPermissionMode? mode,
   }) =>
-      _ptf(inner.queryPermission(
-        _FileSystemHandlePermissionDescriptor(
-          mode: mode == null ? null : mode.toString().split('.')[1],
+      _ptf(
+        inner.queryPermission(
+          _FileSystemHandlePermissionDescriptor(
+            mode: mode == null ? null : mode.toString().split('.')[1],
+          ),
         ),
-      )).then((value) => parseEnum(value, PermissionStateEnum.values)!);
+      ).then((value) => parseEnum(value, PermissionStateEnum.values)!);
 
   @override
   Future<PermissionStateEnum> requestPermission({
     FileSystemPermissionMode? mode,
   }) =>
-      _ptf(inner.requestPermission(
-        _FileSystemHandlePermissionDescriptor(
-          mode: mode == null ? null : mode.toString().split('.')[1],
+      _ptf(
+        inner.requestPermission(
+          _FileSystemHandlePermissionDescriptor(
+            mode: mode == null ? null : mode.toString().split('.')[1],
+          ),
         ),
-      )).then((value) => parseEnum(value, PermissionStateEnum.values)!);
+      ).then((value) => parseEnum(value, PermissionStateEnum.values)!);
 
   @override
   Future<void> remove({
@@ -324,9 +330,9 @@ class _IteratorValue<T> {
 }
 
 // type WriteParams =
-//     | { type: 'write'; position?: number; data: BufferSource | Blob | string }
-//     | { type: 'seek'; position: number }
-//     | { type: 'truncate'; size: number };
+//    | { type: 'write'; position?: number; data: BufferSource | Blob | string }
+//    | { type: 'seek'; position: number }
+//    | { type: 'truncate'; size: number };
 
 // type FileSystemWriteChunkType = BufferSource | Blob | string | WriteParams;
 
@@ -347,12 +353,12 @@ abstract class _FileSystemWritableFileStream /*extends WritableStream*/ {
   external _Promise<void> truncate(int size);
 }
 
-class FileSystemWritableFileStreamJS implements FileSystemWritableFileStream {
-  const FileSystemWritableFileStreamJS(this.inner);
+class _FileSystemWritableFileStreamJS implements FileSystemWritableFileStream {
+  const _FileSystemWritableFileStreamJS(this.inner);
   final _FileSystemWritableFileStream inner;
 
   @override
-  Future<void> write(FileSystemWriteChunkType data) {
+  Future<void> write(WriteChunkType data) {
     final value = data.maybeWhen(
       writeParams: (writeParams) {
         final map = writeParams.toJson();
@@ -383,13 +389,14 @@ class FileSystemWritableFileStreamJS implements FileSystemWritableFileStream {
 @JS('FileSystemFileHandle')
 abstract class _FileSystemFileHandle extends _FileSystemHandle {
   external _Promise<html.File> getFile();
-  external _Promise<_FileSystemWritableFileStream> createWritable(
-      [_FileSystemCreateWritableOptions? options]);
+  external _Promise<_FileSystemWritableFileStream> createWritable([
+    _FileSystemCreateWritableOptions? options,
+  ]);
 }
 
-class FileSystemFileHandleJS extends _FileSystemHandleJS
+class _FileSystemFileHandleJS extends _FileSystemHandleJS
     implements FileSystemFileHandle {
-  FileSystemFileHandleJS(_FileSystemFileHandle inner) : super(inner);
+  _FileSystemFileHandleJS(_FileSystemFileHandle super.inner);
   _FileSystemFileHandle get _inner => inner as _FileSystemFileHandle;
 
   @override
@@ -402,9 +409,13 @@ class FileSystemFileHandleJS extends _FileSystemHandleJS
   Future<FileSystemWritableFileStream> createWritable({
     bool? keepExistingData,
   }) =>
-      _ptf(_inner.createWritable(_FileSystemCreateWritableOptions(
-              keepExistingData: keepExistingData)))
-          .then((value) => FileSystemWritableFileStreamJS(value));
+      _ptf(
+        _inner.createWritable(
+          _FileSystemCreateWritableOptions(
+            keepExistingData: keepExistingData,
+          ),
+        ),
+      ).then((value) => _FileSystemWritableFileStreamJS(value));
 }
 
 XFile _convertFileToXFile(html.File file) => XFile(
@@ -420,12 +431,18 @@ XFile _convertFileToXFile(html.File file) => XFile(
 //@class
 @JS('FileSystemDirectoryHandle')
 abstract class _FileSystemDirectoryHandle extends _FileSystemHandle {
-  external _Promise<_FileSystemFileHandle> getFileHandle(String name,
-      [_FileSystemGetFileOptions? options]);
-  external _Promise<_FileSystemDirectoryHandle> getDirectoryHandle(String name,
-      [_FileSystemGetDirectoryOptions? options]);
-  external _Promise<void> removeEntry(String name,
-      [_FileSystemRemoveOptions? options]);
+  external _Promise<_FileSystemFileHandle> getFileHandle(
+    String name, [
+    _FileSystemGetFileOptions? options,
+  ]);
+  external _Promise<_FileSystemDirectoryHandle> getDirectoryHandle(
+    String name, [
+    _FileSystemGetDirectoryOptions? options,
+  ]);
+  external _Promise<void> removeEntry(
+    String name, [
+    _FileSystemRemoveOptions? options,
+  ]);
   external _Promise<List<String>?> resolve(FileSystemHandle possibleDescendant);
 
   // external dynamic keys();
@@ -461,7 +478,7 @@ class StorageManagerJS implements StorageManager {
   @override
   Future<FileSystemDirectoryHandle> getDirectory() =>
       _ptf(_navigatorStorageGetDirectory())
-          .then(FileSystemDirectoryHandleJS.new);
+          .then(_FileSystemDirectoryHandleJS.new);
 }
 
 class _StorageEstimate implements StorageEstimate {
@@ -519,9 +536,9 @@ RemoveEntryError _mapRemoveEntryError(
   );
 }
 
-class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
+class _FileSystemDirectoryHandleJS extends _FileSystemHandleJS
     implements FileSystemDirectoryHandle {
-  FileSystemDirectoryHandleJS(_FileSystemDirectoryHandle inner) : super(inner);
+  _FileSystemDirectoryHandleJS(_FileSystemDirectoryHandle super.inner);
   _FileSystemDirectoryHandle get _inner => inner as _FileSystemDirectoryHandle;
 
   @override
@@ -536,7 +553,7 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
           _FileSystemGetFileOptions(create: create),
         ),
       );
-      return Ok(FileSystemFileHandleJS(value));
+      return Ok(_FileSystemFileHandleJS(value));
     } catch (error, stack) {
       return Err(_mapGetHandleError(this, name, error, stack));
     }
@@ -554,7 +571,7 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
           _FileSystemGetDirectoryOptions(create: create),
         ),
       );
-      return Ok(FileSystemDirectoryHandleJS(value));
+      return Ok(_FileSystemDirectoryHandleJS(value));
     } catch (error, stack) {
       return Err(_mapGetHandleError(this, name, error, stack));
     }
@@ -643,16 +660,19 @@ class FileSystemDirectoryHandleJS extends _FileSystemHandleJS
 // }
 
 @JS('showOpenFilePicker')
-external _Promise<List<_FileSystemFileHandle>> _showOpenFilePicker(
-    [_OpenFilePickerOptions? options]);
+external _Promise<List<_FileSystemFileHandle>> _showOpenFilePicker([
+  _OpenFilePickerOptions? options,
+]);
 
 @JS('showSaveFilePicker')
-external _Promise<_FileSystemFileHandle> _showSaveFilePicker(
-    [_SaveFilePickerOptions? options]);
+external _Promise<_FileSystemFileHandle> _showSaveFilePicker([
+  _SaveFilePickerOptions? options,
+]);
 
 @JS('showDirectoryPicker')
-external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker(
-    [_DirectoryPickerOptions? options]);
+external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker([
+  _DirectoryPickerOptions? options,
+]);
 
 @JS('getFileSystemAccessFilePersistence')
 external _Promise<_FileSystemPersistence> _getFileSystemAccessFilePersistence([
@@ -769,13 +789,13 @@ class _FileSystemPersistenceItemJS with FileSystemPersistenceItem {
 PersistedFile _savedFileFromValue(Object value) {
   final jsObject = value.toJSBox;
   return PersistedFile(
-    name: jsObject['name'] as String,
-    mimeType: jsObject['type'] as String,
+    name: jsObject['name']! as String,
+    mimeType: jsObject['type']! as String,
     lastModified: DateTime.fromMillisecondsSinceEpoch(
-      jsObject['lastModified'] as int,
+      jsObject['lastModified']! as int,
     ),
-    arrayBuffer: jsObject['arrayBuffer'] as ByteBuffer,
-    digestSha1Hex: jsObject['digestSha1Hex'] as String,
+    arrayBuffer: jsObject['arrayBuffer']! as ByteBuffer,
+    digestSha1Hex: jsObject['digestSha1Hex']! as String,
     webkitRelativePath: jsObject['webkitRelativePath'] as String?,
   );
 }
@@ -968,16 +988,18 @@ class FileSystem extends FileSystemI {
   Future<List<FileSystemFileHandle>> showOpenFilePicker([
     FsOpenOptions options = const FsOpenOptions(),
   ]) {
-    final _promise = _showOpenFilePicker(_OpenFilePickerOptions(
-      multiple: options.multiple,
-      excludeAcceptAllOption: options.excludeAcceptAllOption,
-      types: _mapFilePickerTypes(options.types),
-      id: options.id ?? _undefinedValue,
-      startIn: _startInArg(options.startIn),
-    ));
+    final _promise = _showOpenFilePicker(
+      _OpenFilePickerOptions(
+        multiple: options.multiple,
+        excludeAcceptAllOption: options.excludeAcceptAllOption,
+        types: _mapFilePickerTypes(options.types),
+        id: options.id ?? _undefinedValue,
+        startIn: _startInArg(options.startIn),
+      ),
+    );
     return _pltf(_promise)
         .then<List<FileSystemFileHandle>>(
-      (value) => value.map((e) => FileSystemFileHandleJS(e)).toList(),
+      (value) => value.map((e) => _FileSystemFileHandleJS(e)).toList(),
     ) // TODO: distinguish AbortError from others (for example, unsupported)
         .onError((Object error, StackTrace _) {
       if (error is html.DomException && html.DomException.ABORT == error.name) {
@@ -1002,7 +1024,9 @@ class FileSystem extends FileSystemI {
           ),
         ),
       )
-          .then<FileSystemFileHandle?>((value) => FileSystemFileHandleJS(value))
+          .then<FileSystemFileHandle?>(
+        (value) => _FileSystemFileHandleJS(value),
+      )
           // TODO: distinguish AbortError from others (for example, unsupported)
           .onError((Object error, _) {
         if (error is html.DomException &&
@@ -1016,13 +1040,18 @@ class FileSystem extends FileSystemI {
   Future<FileSystemDirectoryHandle?> showDirectoryPicker([
     FsDirectoryOptions options = const FsDirectoryOptions(),
   ]) =>
-      _ptf(_showDirectoryPicker(_DirectoryPickerOptions(
-        mode: options.mode.name,
-        id: options.id ?? _undefinedValue,
-        startIn: _startInArg(options.startIn),
-      )))
+      _ptf(
+        _showDirectoryPicker(
+          _DirectoryPickerOptions(
+            mode: options.mode.name,
+            id: options.id ?? _undefinedValue,
+            startIn: _startInArg(options.startIn),
+          ),
+        ),
+      )
           .then<FileSystemDirectoryHandle?>(
-              (value) => FileSystemDirectoryHandleJS(value))
+        (value) => _FileSystemDirectoryHandleJS(value),
+      )
           // TODO: distinguish AbortError from others (for example, unsupported)
           .onError((Object error, _) {
         if (error is html.DomException &&
@@ -1039,12 +1068,14 @@ class FileSystem extends FileSystemI {
     String databaseName = 'FilesDB',
     String objectStoreName = 'FilesObjectStore',
   }) =>
-      _persistence ??= _ptf(_getFileSystemAccessFilePersistence(
-        _FileSystemPersistenceParams(
-          databaseName: databaseName,
-          objectStoreName: objectStoreName,
+      _persistence ??= _ptf(
+        _getFileSystemAccessFilePersistence(
+          _FileSystemPersistenceParams(
+            databaseName: databaseName,
+            objectStoreName: objectStoreName,
+          ),
         ),
-      )).then((value) => _FileSystemPersistenceJS(value));
+      ).then((value) => _FileSystemPersistenceJS(value));
 
   @override
   StorageManager get storageManager =>
@@ -1114,76 +1145,3 @@ Future<List<T>?> _pltfNull<T>(_Promise<List<T>?> v) async {
   final vm = await promiseToFuture<Object?>(v);
   return (vm as List?)?.cast();
 }
-
-// DEPRECATED
-// Old methods available on Chromium 85 instead of the ones above.
-
-// class ChooseFileSystemEntriesOptionsAccepts {
-//     description?: string;
-//     mimeTypes?: string[];
-//     extensions?: string[];
-// }
-
-// class ChooseFileSystemEntriesFileOptions {
-//     accepts?: ChooseFileSystemEntriesOptionsAccepts[];
-//     excludeAcceptAllOption?: boolean;
-// }
-
-// /**
-//  * @deprecated Old method just for Chromium <=85. Use `showOpenFilePicker()` in the new API.
-//  */
-// function chooseFileSystemEntries(
-//     options?: ChooseFileSystemEntriesFileOptions & {
-//         type?: 'open-file';
-//         multiple?: false;
-//     },
-// ): Promise<FileSystemFileHandle>;
-// /**
-//  * @deprecated Old method just for Chromium <=85. Use `showOpenFilePicker()` in the new API.
-//  */
-// function chooseFileSystemEntries(
-//     options: ChooseFileSystemEntriesFileOptions & {
-//         type?: 'open-file';
-//         multiple: true;
-//     },
-// ): Promise<FileSystemFileHandle[]>;
-// /**
-//  * @deprecated Old method just for Chromium <=85. Use `showSaveFilePicker()` in the new API.
-//  */
-// function chooseFileSystemEntries(
-//     options: ChooseFileSystemEntriesFileOptions & {
-//         type: 'save-file';
-//     },
-// ): Promise<FileSystemFileHandle>;
-// /**
-//  * @deprecated Old method just for Chromium <=85. Use `showDirectoryPicker()` in the new API.
-//  */
-// function chooseFileSystemEntries(options: { type: 'open-directory' }): Promise<FileSystemDirectoryHandle>;
-
-// class GetSystemDirectoryOptions {
-//     type: 'sandbox';
-// }
-
-// class FileSystemDirectoryHandle {
-//     /**
-//      * @deprecated Old property just for Chromium <=85. Use `.getFileHandle()` in the new API.
-//      */
-//     getFile: FileSystemDirectoryHandle['getFileHandle'];
-
-//     /**
-//      * @deprecated Old property just for Chromium <=85. Use `.getDirectoryHandle()` in the new API.
-//      */
-//     getDirectory: FileSystemDirectoryHandle['getDirectoryHandle'];
-
-//     /**
-//      * @deprecated Old property just for Chromium <=85. Use `.keys()`, `.values()`, `.entries()`, or the directory itself as an async iterable in the new API.
-//      */
-//     getEntries: FileSystemDirectoryHandle['values'];
-// }
-
-// class FileSystemHandlePermissionDescriptor {
-//     /**
-//      * @deprecated Old property just for Chromium <=85. Use `mode: ...` in the new API.
-//      */
-//     writable?: boolean;
-// }

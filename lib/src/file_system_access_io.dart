@@ -8,14 +8,16 @@ abstract class FileSystemHandleIo extends FileSystemHandle {
   String get path;
 
   @override
-  Future<PermissionStateEnum> queryPermission(
-      {FileSystemPermissionMode? mode}) async {
+  Future<PermissionStateEnum> queryPermission({
+    FileSystemPermissionMode? mode,
+  }) async {
     return PermissionStateEnum.granted;
   }
 
   @override
-  Future<PermissionStateEnum> requestPermission(
-      {FileSystemPermissionMode? mode}) async {
+  Future<PermissionStateEnum> requestPermission({
+    FileSystemPermissionMode? mode,
+  }) async {
     return PermissionStateEnum.granted;
   }
 }
@@ -70,7 +72,7 @@ class FileSystemWritableFileStreamIo extends FileSystemWritableFileStream {
   }
 
   @override
-  Future<void> write(FileSystemWriteChunkType data) async {
+  Future<void> write(WriteChunkType data) async {
     await data.when(
       bufferSource: (bufferSource) {
         return sink.writeFrom(bufferSource.asUint8List());
@@ -249,9 +251,11 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
         if (recursive != true) {
           final isEmpty = await dir.list().isEmpty;
           if (!isEmpty) {
-            return Err(_makeError(
-              RemoveEntryErrorType.InvalidModificationError,
-            ));
+            return Err(
+              _makeError(
+                RemoveEntryErrorType.InvalidModificationError,
+              ),
+            );
           }
         }
         entity = dir;
@@ -259,6 +263,11 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
       case FileSystemEntityType.link:
         entity = Link(concatName);
         break;
+      case FileSystemEntityType.pipe:
+      case FileSystemEntityType.unixDomainSock:
+        throw UnsupportedError(
+          'Pipe and Unix domain socket are not supported.',
+        );
     }
     await entity.delete(recursive: recursive ?? false);
     return const Ok(null);

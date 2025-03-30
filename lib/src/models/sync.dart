@@ -93,7 +93,7 @@ class DirectorySynchronizer {
   DirectorySyncResult? _lastSyncResult;
   DirectorySyncResult? get lastSyncResult => _lastSyncResult;
 
-  final Map<String, _SavedEntity> _savedFiles = {};
+  final Map<String, SavedEntity> _savedFiles = {};
 
   void restartSync() {
     stopSync();
@@ -186,7 +186,7 @@ class DirectorySynchronizer {
     _syncFuture = _comp.future;
     final serialized = getSerializedEntities();
 
-    final result = await saveDirectoryEntities(
+    final result = await _saveDirectoryEntities(
       directoryHandle!,
       serialized,
       _savedFiles,
@@ -217,7 +217,7 @@ Future<Result<FileSystemFileHandle, BaseFileError>> saveFile(
       final writable = await file.createWritable();
 
       await writable.write(
-        FileSystemWriteChunkType.bufferSource(serializedFile.content.buffer),
+        WriteChunkType.bufferSource(serializedFile.content.buffer),
       );
       await writable.close();
 
@@ -227,10 +227,10 @@ Future<Result<FileSystemFileHandle, BaseFileError>> saveFile(
   );
 }
 
-Future<DirectorySyncResult> saveDirectoryEntities(
+Future<DirectorySyncResult> _saveDirectoryEntities(
   FileSystemDirectoryHandle directory,
   List<SerializedFileEntity> serialized,
-  Map<String, _SavedEntity> savedFiles, {
+  Map<String, SavedEntity> savedFiles, {
   bool forceUpdate = false,
 }) async {
   final toSave = serialized.asDirectoryMap();
@@ -258,14 +258,14 @@ Future<DirectorySyncResult> saveDirectoryEntities(
           ok: (newDir) async {
             final newSavedFiles = previous?.childEntities ?? {};
 
-            final _savedEntity = _SavedEntity(
+            final _savedEntity = SavedEntity(
               value: entity,
               handle: newDir,
               childEntities: newSavedFiles,
             );
             savedFiles[entry.key] = _savedEntity;
 
-            final _result = await saveDirectoryEntities(
+            final _result = await _saveDirectoryEntities(
               newDir,
               serDir.entities,
               newSavedFiles,
@@ -289,7 +289,7 @@ Future<DirectorySyncResult> saveDirectoryEntities(
 
         return file.when(
           ok: (file) {
-            final _savedEntity = _SavedEntity(
+            final _savedEntity = SavedEntity(
               value: entity,
               handle: file,
             );
@@ -334,15 +334,15 @@ Future<DirectorySyncResult> saveDirectoryEntities(
   );
 }
 
-class _SavedEntity {
+class SavedEntity {
   final SerializedFileEntity value;
   final FileSystemHandle handle;
 
   /// Only for directories
-  final Map<String, _SavedEntity>? childEntities;
+  final Map<String, SavedEntity>? childEntities;
   final timestamp = DateTime.now();
 
-  _SavedEntity({
+  SavedEntity({
     required this.value,
     required this.handle,
     this.childEntities,
@@ -351,15 +351,17 @@ class _SavedEntity {
 
 extension EntitiesMap on List<SerializedFileEntity> {
   Map<String, SerializedFileEntity> asDirectoryMap() {
-    return Map.fromEntries(map(
-      (e) => MapEntry(e.name, e),
-    ));
+    return Map.fromEntries(
+      map(
+        (e) => MapEntry(e.name, e),
+      ),
+    );
   }
 }
 
 class SavedEntityResult {
   final bool wasCached;
-  final _SavedEntity? entity;
+  final SavedEntity? entity;
   final BaseFileError? error;
 
   /// Only for directories

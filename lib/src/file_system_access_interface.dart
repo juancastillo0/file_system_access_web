@@ -68,7 +68,7 @@ enum FileSystemHandleKind { file, directory }
 
 /// https://developer.mozilla.org/docs/Web/API/FileSystemWritableFileStream
 abstract class FileSystemWritableFileStream {
-  Future<void> write(FileSystemWriteChunkType data);
+  Future<void> write(WriteChunkType data);
 
   Future<void> close();
 
@@ -257,12 +257,14 @@ abstract class FileSystemI {
   ]) async {
     if (isSupported) {
       final selection = await showOpenFilePicker(options);
-      return Future.wait(selection.map(
-        (e) async => FileSystemFileWebSafe(
-          file: await e.getFile(),
-          handle: e,
+      return Future.wait(
+        selection.map(
+          (e) async => FileSystemFileWebSafe(
+            file: await e.getFile(),
+            handle: e,
+          ),
         ),
-      ));
+      );
     }
     final files = await file_selector.openFiles(
       initialDirectory: options.startIn?.path,

@@ -4,67 +4,71 @@ abstract class WriteParams {
   const WriteParams._();
 
   const factory WriteParams.write({
-    required FileSystemWriteChunkType data,
+    required WriteChunkType data,
     int? position,
-  }) = _Write;
+  }) = WriteParamsWrite;
   const factory WriteParams.seek({
     required int position,
-  }) = _Seek;
+  }) = WriteParamsSeek;
   const factory WriteParams.truncate({
     required int size,
-  }) = _Truncate;
+  }) = WriteParamsTruncate;
 
   T when<T>({
-    required T Function(FileSystemWriteChunkType data, int? position) write,
+    required T Function(WriteChunkType data, int? position) write,
     required T Function(int position) seek,
     required T Function(int size) truncate,
   }) {
     final WriteParams v = this;
-    if (v is _Write) return write(v.data, v.position);
-    if (v is _Seek) return seek(v.position);
-    if (v is _Truncate) return truncate(v.size);
+    if (v is WriteParamsWrite) return write(v.data, v.position);
+    if (v is WriteParamsSeek) return seek(v.position);
+    if (v is WriteParamsTruncate) return truncate(v.size);
     throw '';
   }
 
   T maybeWhen<T>({
     required T Function() orElse,
-    T Function(FileSystemWriteChunkType data, int? position)? write,
+    T Function(WriteChunkType data, int? position)? write,
     T Function(int position)? seek,
     T Function(int size)? truncate,
   }) {
     final WriteParams v = this;
-    if (v is _Write) {
+    if (v is WriteParamsWrite) {
       return write != null ? write(v.data, v.position) : orElse.call();
-    }
-    if (v is _Seek) return seek != null ? seek(v.position) : orElse.call();
-    if (v is _Truncate) {
+    } else if (v is WriteParamsSeek) {
+      return seek != null ? seek(v.position) : orElse.call();
+    } else if (v is WriteParamsTruncate) {
       return truncate != null ? truncate(v.size) : orElse.call();
     }
     throw '';
   }
 
   T map<T>({
-    required T Function(_Write value) write,
-    required T Function(_Seek value) seek,
-    required T Function(_Truncate value) truncate,
+    required T Function(WriteParamsWrite value) write,
+    required T Function(WriteParamsSeek value) seek,
+    required T Function(WriteParamsTruncate value) truncate,
   }) {
     final WriteParams v = this;
-    if (v is _Write) return write(v);
-    if (v is _Seek) return seek(v);
-    if (v is _Truncate) return truncate(v);
+    if (v is WriteParamsWrite) return write(v);
+    if (v is WriteParamsSeek) return seek(v);
+    if (v is WriteParamsTruncate) return truncate(v);
     throw '';
   }
 
   T maybeMap<T>({
     required T Function() orElse,
-    T Function(_Write value)? write,
-    T Function(_Seek value)? seek,
-    T Function(_Truncate value)? truncate,
+    T Function(WriteParamsWrite value)? write,
+    T Function(WriteParamsSeek value)? seek,
+    T Function(WriteParamsTruncate value)? truncate,
   }) {
     final WriteParams v = this;
-    if (v is _Write) return write != null ? write(v) : orElse.call();
-    if (v is _Seek) return seek != null ? seek(v) : orElse.call();
-    if (v is _Truncate) return truncate != null ? truncate(v) : orElse.call();
+    if (v is WriteParamsWrite) {
+      return write != null ? write(v) : orElse.call();
+    } else if (v is WriteParamsSeek) {
+      return seek != null ? seek(v) : orElse.call();
+    } else if (v is WriteParamsTruncate) {
+      return truncate != null ? truncate(v) : orElse.call();
+    }
     throw '';
   }
 //   static WriteParams fromJson(Map<String, dynamic> map) {
@@ -80,11 +84,11 @@ abstract class WriteParams {
   Map<String, dynamic> toJson();
 }
 
-class _Write extends WriteParams {
+class WriteParamsWrite extends WriteParams {
   final int? position;
-  final FileSystemWriteChunkType data;
+  final WriteChunkType data;
 
-  const _Write({
+  const WriteParamsWrite({
     required this.data,
     this.position,
   }) : super._();
@@ -106,10 +110,10 @@ class _Write extends WriteParams {
   }
 }
 
-class _Seek extends WriteParams {
+class WriteParamsSeek extends WriteParams {
   final int position;
 
-  const _Seek({
+  const WriteParamsSeek({
     required this.position,
   }) : super._();
 
@@ -128,10 +132,10 @@ class _Seek extends WriteParams {
   }
 }
 
-class _Truncate extends WriteParams {
+class WriteParamsTruncate extends WriteParams {
   final int size;
 
-  const _Truncate({
+  const WriteParamsTruncate({
     required this.size,
   }) : super._();
 

@@ -11,9 +11,8 @@ dependencies:
   file_selector: ^1.0.3
   meta: ^1.0.0
   file_picker: ^8.3.3
+  web: ^1.1.1
 
 dev_dependencies:
   test: ^1.0.0
   lint: ^2.3.0
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec

@@ -19,10 +19,10 @@ abstract class SerializedFileEntity {
 
   String get name;
 
-  _T when<_T>({
-    required _T Function(String name, List<SerializedFileEntity> entities)
+  T when<T>({
+    required T Function(String name, List<SerializedFileEntity> entities)
         directory,
-    required _T Function(String name, Uint8List content) file,
+    required T Function(String name, Uint8List content) file,
   }) {
     final v = this;
     if (v is SerializedDirectory) {
@@ -33,10 +33,10 @@ abstract class SerializedFileEntity {
     throw Exception();
   }
 
-  _T maybeWhen<_T>({
-    required _T Function() orElse,
-    _T Function(String name, List<SerializedFileEntity> entities)? directory,
-    _T Function(String name, Uint8List content)? file,
+  T maybeWhen<T>({
+    required T Function() orElse,
+    T Function(String name, List<SerializedFileEntity> entities)? directory,
+    T Function(String name, Uint8List content)? file,
   }) {
     final v = this;
     if (v is SerializedDirectory) {
@@ -47,9 +47,9 @@ abstract class SerializedFileEntity {
     throw Exception();
   }
 
-  _T map<_T>({
-    required _T Function(SerializedDirectory value) directory,
-    required _T Function(SerializedFile value) file,
+  T map<T>({
+    required T Function(SerializedDirectory value) directory,
+    required T Function(SerializedFile value) file,
   }) {
     final v = this;
     if (v is SerializedDirectory) {
@@ -60,10 +60,10 @@ abstract class SerializedFileEntity {
     throw Exception();
   }
 
-  _T maybeMap<_T>({
-    required _T Function() orElse,
-    _T Function(SerializedDirectory value)? directory,
-    _T Function(SerializedFile value)? file,
+  T maybeMap<T>({
+    required T Function() orElse,
+    T Function(SerializedDirectory value)? directory,
+    T Function(SerializedFile value)? file,
   }) {
     final v = this;
     if (v is SerializedDirectory) {
@@ -100,8 +100,10 @@ enum TypeSerializedFileEntity {
   file,
 }
 
-TypeSerializedFileEntity? parseTypeSerializedFileEntity(String rawString,
-    {bool caseSensitive = true}) {
+TypeSerializedFileEntity? parseTypeSerializedFileEntity(
+  String rawString, {
+  bool caseSensitive = true,
+}) {
   final _rawString = caseSensitive ? rawString : rawString.toLowerCase();
   for (final variant in TypeSerializedFileEntity.values) {
     final variantString = caseSensitive
@@ -121,9 +123,9 @@ extension TypeSerializedFileEntityExtension on TypeSerializedFileEntity {
   bool get isSerializedDirectory => this == TypeSerializedFileEntity.directory;
   bool get isSerializedFile => this == TypeSerializedFileEntity.file;
 
-  _T when<_T>({
-    required _T Function() directory,
-    required _T Function() file,
+  T when<T>({
+    required T Function() directory,
+    required T Function() file,
   }) {
     switch (this) {
       case TypeSerializedFileEntity.directory:
@@ -133,12 +135,12 @@ extension TypeSerializedFileEntityExtension on TypeSerializedFileEntity {
     }
   }
 
-  _T maybeWhen<_T>({
-    _T Function()? directory,
-    _T Function()? file,
-    required _T Function() orElse,
+  T maybeWhen<T>({
+    T Function()? directory,
+    T Function()? file,
+    required T Function() orElse,
   }) {
-    _T Function()? c;
+    T Function()? c;
     switch (this) {
       case TypeSerializedFileEntity.directory:
         c = directory;
@@ -186,8 +188,10 @@ class SerializedDirectory extends SerializedFileEntity {
     return SerializedDirectory(
       name: map['name'] as String,
       entities: (map['entities'] as List)
-          .map((Object? e) =>
-              SerializedFileEntity.fromJson(e! as Map<String, Object?>))
+          .map(
+            (Object? e) =>
+                SerializedFileEntity.fromJson(e! as Map<String, Object?>),
+          )
           .toList(),
     );
   }

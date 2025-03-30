@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:file_system_access/file_system_access.dart';
 import 'package:test/test.dart';
 
@@ -43,7 +45,8 @@ void main() {
 
         await writable.seek(content.length);
         await writable.write(
-            const FileSystemWriteChunkType.string('\nAPPENDED_NEW_LINE_STR'));
+          const WriteChunkType.string('\nAPPENDED_NEW_LINE_STR'),
+        );
         await writable.close();
       },
       err: (error) async {

@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -1229,7 +1231,7 @@ class AppState extends ChangeNotifier {
       final writable = await selectedFileForSave.value!.createWritable(
         keepExistingData: false,
       );
-      await writable.write(FileSystemWriteChunkType.string(text));
+      await writable.write(WriteChunkType.string(text));
       await writable.close();
       computeSelectedFileForSaveDesc();
       notifyListeners();

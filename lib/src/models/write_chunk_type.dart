@@ -4,18 +4,18 @@ import 'package:file_system_access/src/models/write_params.dart';
 
 export 'package:file_system_access/src/models/write_params.dart';
 
-abstract class FileSystemWriteChunkType {
-  const FileSystemWriteChunkType._();
+abstract class WriteChunkType {
+  const WriteChunkType._();
 
-  const factory FileSystemWriteChunkType.bufferSource(
+  const factory WriteChunkType.bufferSource(
     ByteBuffer value,
-  ) = _BufferSource;
-  const factory FileSystemWriteChunkType.string(
+  ) = WriteChunkTypeBufferSource;
+  const factory WriteChunkType.string(
     String value,
-  ) = _String;
-  const factory FileSystemWriteChunkType.writeParams(
+  ) = WriteChunkTypeString;
+  const factory WriteChunkType.writeParams(
     WriteParams value,
-  ) = _WriteParams;
+  ) = WriteChunkTypeWriteParams;
 
   Object get value;
 
@@ -24,10 +24,10 @@ abstract class FileSystemWriteChunkType {
     required T Function(String value) string,
     required T Function(WriteParams value) writeParams,
   }) {
-    final FileSystemWriteChunkType v = this;
-    if (v is _BufferSource) return bufferSource(v.value);
-    if (v is _String) return string(v.value);
-    if (v is _WriteParams) return writeParams(v.value);
+    final WriteChunkType v = this;
+    if (v is WriteChunkTypeBufferSource) return bufferSource(v.value);
+    if (v is WriteChunkTypeString) return string(v.value);
+    if (v is WriteChunkTypeWriteParams) return writeParams(v.value);
     throw '';
   }
 
@@ -37,71 +37,70 @@ abstract class FileSystemWriteChunkType {
     T Function(String value)? string,
     T Function(WriteParams value)? writeParams,
   }) {
-    final FileSystemWriteChunkType v = this;
-    if (v is _BufferSource) {
+    final WriteChunkType v = this;
+    if (v is WriteChunkTypeBufferSource) {
       return bufferSource != null ? bufferSource(v.value) : orElse.call();
-    }
-    if (v is _String) return string != null ? string(v.value) : orElse.call();
-    if (v is _WriteParams) {
+    } else if (v is WriteChunkTypeString) {
+      return string != null ? string(v.value) : orElse.call();
+    } else if (v is WriteChunkTypeWriteParams) {
       return writeParams != null ? writeParams(v.value) : orElse.call();
     }
     throw '';
   }
 
   T map<T>({
-    required T Function(_BufferSource value) bufferSource,
-    required T Function(_String value) string,
-    required T Function(_WriteParams value) writeParams,
+    required T Function(WriteChunkTypeBufferSource value) bufferSource,
+    required T Function(WriteChunkTypeString value) string,
+    required T Function(WriteChunkTypeWriteParams value) writeParams,
   }) {
-    final FileSystemWriteChunkType v = this;
-    if (v is _BufferSource) return bufferSource(v);
-    if (v is _String) return string(v);
-    if (v is _WriteParams) return writeParams(v);
+    final WriteChunkType v = this;
+    if (v is WriteChunkTypeBufferSource) return bufferSource(v);
+    if (v is WriteChunkTypeString) return string(v);
+    if (v is WriteChunkTypeWriteParams) return writeParams(v);
     throw '';
   }
 
   T maybeMap<T>({
     required T Function() orElse,
-    T Function(_BufferSource value)? bufferSource,
-    T Function(_String value)? string,
-    T Function(_WriteParams value)? writeParams,
+    T Function(WriteChunkTypeBufferSource value)? bufferSource,
+    T Function(WriteChunkTypeString value)? string,
+    T Function(WriteChunkTypeWriteParams value)? writeParams,
   }) {
-    final FileSystemWriteChunkType v = this;
-    if (v is _BufferSource) {
+    final WriteChunkType v = this;
+    if (v is WriteChunkTypeBufferSource) {
       return bufferSource != null ? bufferSource(v) : orElse.call();
-    }
-
-    if (v is _String) return string != null ? string(v) : orElse.call();
-    if (v is _WriteParams) {
+    } else if (v is WriteChunkTypeString) {
+      return string != null ? string(v) : orElse.call();
+    } else if (v is WriteChunkTypeWriteParams) {
       return writeParams != null ? writeParams(v) : orElse.call();
     }
     throw '';
   }
 }
 
-class _BufferSource extends FileSystemWriteChunkType {
+class WriteChunkTypeBufferSource extends WriteChunkType {
   @override
   final ByteBuffer value;
 
-  const _BufferSource(
+  const WriteChunkTypeBufferSource(
     this.value,
   ) : super._();
 }
 
-class _String extends FileSystemWriteChunkType {
+class WriteChunkTypeString extends WriteChunkType {
   @override
   final String value;
 
-  const _String(
+  const WriteChunkTypeString(
     this.value,
   ) : super._();
 }
 
-class _WriteParams extends FileSystemWriteChunkType {
+class WriteChunkTypeWriteParams extends WriteChunkType {
   @override
   final WriteParams value;
 
-  const _WriteParams(
+  const WriteChunkTypeWriteParams(
     this.value,
   ) : super._();
 }

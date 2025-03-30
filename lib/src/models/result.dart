@@ -34,9 +34,9 @@ abstract class Result<OK, ERR> {
     );
   }
 
-  _T when<_T>({
-    required _T Function(OK value) ok,
-    required _T Function(ERR value) err,
+  T when<T>({
+    required T Function(OK value) ok,
+    required T Function(ERR value) err,
   }) {
     final v = this;
     if (v is Ok<OK, ERR>) {
@@ -47,10 +47,10 @@ abstract class Result<OK, ERR> {
     throw Exception();
   }
 
-  _T maybeWhen<_T>({
-    required _T Function() orElse,
-    _T Function(OK value)? ok,
-    _T Function(ERR value)? err,
+  T maybeWhen<T>({
+    required T Function() orElse,
+    T Function(OK value)? ok,
+    T Function(ERR value)? err,
   }) {
     final v = this;
     if (v is Ok<OK, ERR>) {
@@ -61,9 +61,9 @@ abstract class Result<OK, ERR> {
     throw Exception();
   }
 
-  _T map<_T>({
-    required _T Function(Ok<OK, ERR> value) ok,
-    required _T Function(Err<OK, ERR> value) err,
+  T map<T>({
+    required T Function(Ok<OK, ERR> value) ok,
+    required T Function(Err<OK, ERR> value) err,
   }) {
     final v = this;
     if (v is Ok<OK, ERR>) {
@@ -74,10 +74,10 @@ abstract class Result<OK, ERR> {
     throw Exception();
   }
 
-  _T maybeMap<_T>({
-    required _T Function() orElse,
-    _T Function(Ok<OK, ERR> value)? ok,
-    _T Function(Err<OK, ERR> value)? err,
+  T maybeMap<T>({
+    required T Function() orElse,
+    T Function(Ok<OK, ERR> value)? ok,
+    T Function(Err<OK, ERR> value)? err,
   }) {
     final v = this;
     if (v is Ok<OK, ERR>) {
@@ -93,14 +93,14 @@ abstract class Result<OK, ERR> {
 
   TypeResult get typeEnum;
 
-  Result<_T, ERR> mapOk<_T>(_T Function(OK) mapper) {
+  Result<T, ERR> mapOk<T>(T Function(OK) mapper) {
     return map(
       ok: (v) => Result.ok(mapper(v.value)),
       err: (v) => Result.err(v.error),
     );
   }
 
-  Result<OK, _T> mapErr<_T>(_T Function(ERR) mapper) {
+  Result<OK, T> mapErr<T>(T Function(ERR) mapper) {
     return map(
       ok: (v) => Result.ok(v.value),
       err: (v) => Result.err(mapper(v.error)),
@@ -108,7 +108,7 @@ abstract class Result<OK, ERR> {
   }
 
   @override
-  bool operator ==(Object? other) {
+  bool operator ==(Object other) {
     return other is Result<OK, ERR> &&
         other.runtimeType == runtimeType &&
         other.errOrNull == errOrNull &&
@@ -153,9 +153,9 @@ extension TypeResultExtension on TypeResult {
   bool get isOk => this == TypeResult.ok;
   bool get isErr => this == TypeResult.err;
 
-  _T when<_T>({
-    required _T Function() ok,
-    required _T Function() err,
+  T when<T>({
+    required T Function() ok,
+    required T Function() err,
   }) {
     switch (this) {
       case TypeResult.ok:
@@ -165,12 +165,12 @@ extension TypeResultExtension on TypeResult {
     }
   }
 
-  _T maybeWhen<_T>({
-    _T Function()? ok,
-    _T Function()? err,
-    required _T Function() orElse,
+  T maybeWhen<T>({
+    T Function()? ok,
+    T Function()? err,
+    required T Function() orElse,
   }) {
-    _T Function()? c;
+    T Function()? c;
     switch (this) {
       case TypeResult.ok:
         c = ok;
