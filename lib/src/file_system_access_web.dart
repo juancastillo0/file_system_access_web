@@ -7,16 +7,11 @@
 library file_system_access;
 
 import 'dart:async';
-import 'dart:html' as html;
-import 'dart:js_interop' as js;
-import 'dart:js_interop' show FunctionToJSExportedDartFunction;
+import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
-import 'dart:typed_data';
 
 import 'package:file_system_access/file_system_access.dart';
 import 'package:file_system_access/src/utils.dart';
-import 'package:js/js.dart';
-import 'package:js/js_util.dart';
 import 'package:web/web.dart' as web;
 
 // @JS()
@@ -64,29 +59,21 @@ import 'package:web/web.dart' as web;
 // }
 
 @JS('undefined')
-external Object? get _undefinedValue;
+external JSAny? get _undefinedValue;
 
-@JS()
-@anonymous
-class _Promise<T> {
-  external _Promise<V> then<V>(V Function(T) f);
-  @JS('catch')
-  external _Promise<T> catchFn(void Function(dynamic) f);
-}
-
-@JS('BaseFileSystemHandle')
-abstract class _FileSystemHandle {
+@JS('FileSystemHandle')
+extension type _FileSystemHandle._(JSObject _) implements JSObject {
   external String get kind;
   external String get name;
 
-  external _Promise<bool> isSameEntry(_FileSystemHandle other);
-  external _Promise<String /*PermissionStateEnum*/ > queryPermission([
+  external JSPromise<JSBoolean> isSameEntry(_FileSystemHandle other);
+  external JSPromise<JSString /*PermissionStateEnum*/> queryPermission([
     _FileSystemHandlePermissionDescriptor? descriptor,
   ]);
-  external _Promise<String /*PermissionStateEnum*/ > requestPermission([
+  external JSPromise<JSString /*PermissionStateEnum*/> requestPermission([
     _FileSystemHandlePermissionDescriptor? descriptor,
   ]);
-  external _Promise<void> remove([_FileSystemHandleRemoveOptions? options]);
+  external JSPromise<JSAny?> remove([_FileSystemHandleRemoveOptions? options]);
 }
 
 abstract class _FileSystemHandleJS extends FileSystemHandle {
@@ -96,12 +83,16 @@ abstract class _FileSystemHandleJS extends FileSystemHandle {
 
   factory _FileSystemHandleJS.fromInner(_FileSystemHandle inner) =>
       inner.kind == FileSystemHandleKind.directory.name
-          ? _FileSystemDirectoryHandleJS(inner as _FileSystemDirectoryHandle)
-          : _FileSystemFileHandleJS(inner as _FileSystemFileHandle);
+      ? _FileSystemDirectoryHandleJS(inner as _FileSystemDirectoryHandle)
+      : _FileSystemFileHandleJS(inner as _FileSystemFileHandle);
 
   @override
-  Future<bool> isSameEntry(FileSystemHandle other) =>
-      _ptf(inner.isSameEntry((other as _FileSystemHandleJS).inner));
+  Future<bool> isSameEntry(FileSystemHandle other) async {
+    final result = await inner
+        .isSameEntry((other as _FileSystemHandleJS).inner)
+        .toDart;
+    return result.toDart;
+  }
 
   @override
   FileSystemHandleKind get kind => inner.kind == 'directory'
@@ -114,32 +105,34 @@ abstract class _FileSystemHandleJS extends FileSystemHandle {
   @override
   Future<PermissionStateEnum> queryPermission({
     FileSystemPermissionMode? mode,
-  }) =>
-      _ptf(
-        inner.queryPermission(
+  }) async {
+    final result = await inner
+        .queryPermission(
           _FileSystemHandlePermissionDescriptor(
             mode: mode == null ? null : mode.toString().split('.')[1],
           ),
-        ),
-      ).then((value) => parseEnum(value, PermissionStateEnum.values)!);
+        )
+        .toDart;
+    return parseEnum(result.toDart, PermissionStateEnum.values)!;
+  }
 
   @override
   Future<PermissionStateEnum> requestPermission({
     FileSystemPermissionMode? mode,
-  }) =>
-      _ptf(
-        inner.requestPermission(
+  }) async {
+    final result = await inner
+        .requestPermission(
           _FileSystemHandlePermissionDescriptor(
             mode: mode == null ? null : mode.toString().split('.')[1],
           ),
-        ),
-      ).then((value) => parseEnum(value, PermissionStateEnum.values)!);
+        )
+        .toDart;
+    return parseEnum(result.toDart, PermissionStateEnum.values)!;
+  }
 
   @override
-  Future<void> remove({
-    bool? recursive,
-  }) =>
-      _ptf(inner.remove(_FileSystemHandleRemoveOptions(recursive: recursive)));
+  Future<void> remove({bool? recursive}) =>
+      inner.remove(_FileSystemHandleRemoveOptions(recursive: recursive)).toDart;
 
   @override
   String toString() {
@@ -147,210 +140,121 @@ abstract class _FileSystemHandleJS extends FileSystemHandle {
   }
 }
 
-@JS()
-@anonymous
-class _FilePickerAcceptTypeJS {
-  external factory _FilePickerAcceptTypeJS({
+extension type _FilePickerAcceptTypeJS._(JSObject _) implements JSObject {
+  external _FilePickerAcceptTypeJS({
     String? description,
-    required Object accept,
+    required JSAny accept,
   });
-  external String? get description; //@optional
-  external Object /*Map<String, List<String> /*String | String[]*/ >*/
-      get accept;
+  external String? get description;
+  external JSAny get accept;
 }
 
-@JS()
-@anonymous
-class _SaveFilePickerOptions {
-  external factory _SaveFilePickerOptions({
-    required List<_FilePickerAcceptTypeJS> types,
+extension type _SaveFilePickerOptions._(JSObject _) implements JSObject {
+  external _SaveFilePickerOptions({
+    required JSArray<_FilePickerAcceptTypeJS> types,
     bool? excludeAcceptAllOption,
     String? suggestedName,
-
-    /// String | FileSystemHandle
-    Object? startIn,
-
-    /// String
-    Object? id,
+    JSAny? startIn,
+    JSAny? id,
   });
-  external List<_FilePickerAcceptTypeJS>? get types; //@optional
-  external bool? get excludeAcceptAllOption; //@optional
-  external String? get suggestedName; //@optional
-
-  /// String | FileSystemHandle
-  external Object? get startIn;
-
-  /// String
-  external Object? get id;
+  external JSArray<_FilePickerAcceptTypeJS>? get types;
+  external bool? get excludeAcceptAllOption;
+  external String? get suggestedName;
+  external JSAny? get startIn;
+  external JSAny? get id;
 }
 
-@JS()
-@anonymous
-class _DirectoryPickerOptions {
-  external factory _DirectoryPickerOptions({
+extension type _DirectoryPickerOptions._(JSObject _) implements JSObject {
+  external _DirectoryPickerOptions({
     required String mode,
-
-    /// String | FileSystemHandle
-    Object? startIn,
-
-    /// String
-    Object? id,
+    JSAny? startIn,
+    JSAny? id,
   });
-  external FileSystemPermissionMode get mode;
-
-  /// String | FileSystemHandle
-  external Object? get startIn;
-
-  /// String
-  external Object? get id;
+  external String get mode;
+  external JSAny? get startIn;
+  external JSAny? get id;
 }
 
-@JS()
-@anonymous
-class _OpenFilePickerOptions {
-  external factory _OpenFilePickerOptions({
+extension type _OpenFilePickerOptions._(JSObject _) implements JSObject {
+  external _OpenFilePickerOptions({
     bool? multiple,
-    required List<_FilePickerAcceptTypeJS> types,
+    required JSArray<_FilePickerAcceptTypeJS> types,
     bool? excludeAcceptAllOption,
-
-    /// String | FileSystemHandle
-    Object? startIn,
-
-    /// String
-    Object? id,
+    JSAny? startIn,
+    JSAny? id,
   });
-  external bool? get multiple; //@optional
-  external List<_FilePickerAcceptTypeJS>? get types; //@optional
-  external bool? get excludeAcceptAllOption; //@optional
-
-  /// String | FileSystemHandle
-  external Object? get startIn;
-
-  /// String
-  external String? get id;
+  external bool? get multiple;
+  external JSArray<_FilePickerAcceptTypeJS>? get types;
+  external bool? get excludeAcceptAllOption;
+  external JSAny? get startIn;
+  external JSAny? get id;
 }
 
-// tslint:disable-next-line:no-empty-interface
-// TODO: can't extend
-// class SaveFilePickerOptions extends FilePickerOptions {}
-
-// tslint:disable-next-line:no-empty-interface
-// @JS()
-// @anonymous
-// class _DirectoryPickerOptions {
-//   external factory _DirectoryPickerOptions();
-// }
-
-// @JS()
-// @anonymous
-// class FileSystemPermissionDescriptor /*extends PermissionDescriptor*/ {
-//   external factory FileSystemPermissionDescriptor(
-//       {FileSystemHandle handle, FileSystemPermissionMode mode});
-//   external FileSystemHandle get handle;
-//   external FileSystemPermissionMode get mode; //@optional
-// }
-
-@JS()
-@anonymous
-class _FileSystemHandlePermissionDescriptor {
-  external factory _FileSystemHandlePermissionDescriptor({String? mode});
-
-  // factory FileSystemHandlePermissionDescriptor.read() =>
-  //     FileSystemHandlePermissionDescriptor(mode: "read");
-  // factory FileSystemHandlePermissionDescriptor.readwrite() =>
-  //     FileSystemHandlePermissionDescriptor(mode: "readwrite");
-
-  external String? get mode; //@optional
+extension type _FileSystemHandlePermissionDescriptor._(JSObject _)
+    implements JSObject {
+  external _FileSystemHandlePermissionDescriptor({String? mode});
+  external String? get mode;
 }
 
-@JS()
-@anonymous
-class _FileSystemHandleRemoveOptions {
-  external factory _FileSystemHandleRemoveOptions({bool? recursive});
-
-  external bool? get recursive; //@optional
+extension type _FileSystemHandleRemoveOptions._(JSObject _)
+    implements JSObject {
+  external _FileSystemHandleRemoveOptions({bool? recursive});
+  external bool? get recursive;
 }
 
-@JS()
-@anonymous
-class _FileSystemCreateWritableOptions {
-  external factory _FileSystemCreateWritableOptions({bool? keepExistingData});
-  external bool? get keepExistingData; //@optional
+extension type _FileSystemCreateWritableOptions._(JSObject _)
+    implements JSObject {
+  external _FileSystemCreateWritableOptions({bool? keepExistingData});
+  external bool? get keepExistingData;
 }
 
-@JS()
-@anonymous
-class _FileSystemGetFileOptions {
-  external factory _FileSystemGetFileOptions({bool? create});
-  external bool? get create; //@optional
+extension type _FileSystemGetFileOptions._(JSObject _) implements JSObject {
+  external _FileSystemGetFileOptions({bool? create});
+  external bool? get create;
 }
 
-@JS()
-@anonymous
-class _FileSystemGetDirectoryOptions {
-  external factory _FileSystemGetDirectoryOptions({bool? create});
-  external bool? get create; //@optional
+extension type _FileSystemGetDirectoryOptions._(JSObject _)
+    implements JSObject {
+  external _FileSystemGetDirectoryOptions({bool? create});
+  external bool? get create;
 }
 
-@JS()
-@anonymous
-class _FileSystemRemoveOptions {
-  external factory _FileSystemRemoveOptions({bool? recursive});
-  external bool? get recursive; //@optional
+extension type _FileSystemRemoveOptions._(JSObject _) implements JSObject {
+  external _FileSystemRemoveOptions({bool? recursive});
+  external bool? get recursive;
 }
 
-/// impl in [WriteParams]
-@JS()
-@anonymous
-class _WriteParams {
-  external factory _WriteParams({
+extension type _WriteParams._(JSObject _) implements JSObject {
+  external _WriteParams({
     required String? type,
     int? position,
-    dynamic data,
+    JSAny? data,
     int? size,
   });
-
   external String get type;
   external int? get position;
-  external dynamic /*?*/ get data;
+  external JSAny? get data;
   external int? get size;
 }
 
-@JS()
-@anonymous
-class _Iterator<T> {
+extension type _Iterator<T extends JSAny?>._(JSObject _) implements JSObject {
   external T next();
 }
 
-@JS()
-@anonymous
-class _IteratorValue<T> {
+extension type _IteratorValue<T extends JSAny?>._(JSObject _)
+    implements JSObject {
   external bool get done;
   external T? get value;
 }
 
-// type WriteParams =
-//    | { type: 'write'; position?: number; data: BufferSource | Blob | string }
-//    | { type: 'seek'; position: number }
-//    | { type: 'truncate'; size: number };
-
 // type FileSystemWriteChunkType = BufferSource | Blob | string | WriteParams;
 
-// TODO: remove this once https://github.com/microsoft/TSJS-lib-generator/issues/881 is fixed.
-// Native File System API especially needs this method.
-// @JS()
-// @anonymous
-// abstract class WritableStream {
-//   external _Promise<void> close();
-// }
-
-//@class
 @JS('FileSystemWritableFileStream')
-abstract class _FileSystemWritableFileStream /*extends WritableStream*/ {
-  external _Promise<void> close();
-  external _Promise<void> write(dynamic /*FileSystemWriteChunkType*/ data);
-  external _Promise<void> seek(int position);
-  external _Promise<void> truncate(int size);
+extension type _FileSystemWritableFileStream._(JSObject _) implements JSObject {
+  external JSPromise<JSAny?> close();
+  external JSPromise<JSAny?> write(JSAny? /*FileSystemWriteChunkType*/ data);
+  external JSPromise<JSAny?> seek(int position);
+  external JSPromise<JSAny?> truncate(int size);
 }
 
 class _FileSystemWritableFileStreamJS implements FileSystemWritableFileStream {
@@ -359,37 +263,37 @@ class _FileSystemWritableFileStreamJS implements FileSystemWritableFileStream {
 
   @override
   Future<void> write(WriteChunkType data) {
-    final value = data.maybeWhen(
+    final jsValue = data.when<JSAny?>(
       writeParams: (writeParams) {
         final map = writeParams.toJson();
         return _WriteParams(
           type: map['type'] as String?,
           position: map['position'] as int?,
-          data: map['data'],
+          data: (map['data'] as Object?).jsify(),
           size: map['size'] as int?,
         );
       },
-      orElse: () => data.value,
+      bufferSource: (value) => value.toJS,
+      string: (value) => value.toJS,
     );
-    final promise = inner.write(value);
-    return _ptf(promise);
+    return inner.write(jsValue).toDart;
   }
 
   @override
-  Future<void> close() => _ptf(inner.close());
+  Future<void> close() => inner.close().toDart;
 
   @override
-  Future<void> seek(int position) => _ptf(inner.seek(position));
+  Future<void> seek(int position) => inner.seek(position).toDart;
 
   @override
-  Future<void> truncate(int size) => _ptf(inner.truncate(size));
+  Future<void> truncate(int size) => inner.truncate(size).toDart;
 }
 
-//@class
 @JS('FileSystemFileHandle')
-abstract class _FileSystemFileHandle extends _FileSystemHandle {
-  external _Promise<html.File> getFile();
-  external _Promise<_FileSystemWritableFileStream> createWritable([
+extension type _FileSystemFileHandle._(JSObject _)
+    implements _FileSystemHandle {
+  external JSPromise<web.File> getFile();
+  external JSPromise<_FileSystemWritableFileStream> createWritable([
     _FileSystemCreateWritableOptions? options,
   ]);
 }
@@ -401,84 +305,84 @@ class _FileSystemFileHandleJS extends _FileSystemHandleJS
 
   @override
   Future<XFile> getFile() async {
-    final _file = await _ptf(_inner.getFile());
-    return _convertFileToXFile(_file);
+    final result = await _inner.getFile().toDart;
+    return _convertFileToXFile(result);
   }
 
   @override
   Future<FileSystemWritableFileStream> createWritable({
     bool? keepExistingData,
-  }) =>
-      _ptf(
-        _inner.createWritable(
-          _FileSystemCreateWritableOptions(
-            keepExistingData: keepExistingData,
-          ),
-        ),
-      ).then((value) => _FileSystemWritableFileStreamJS(value));
+  }) async {
+    final result = await _inner
+        .createWritable(
+          _FileSystemCreateWritableOptions(keepExistingData: keepExistingData),
+        )
+        .toDart;
+    return _FileSystemWritableFileStreamJS(result);
+  }
 }
 
-XFile _convertFileToXFile(html.File file) => XFile(
-      html.Url.createObjectUrl(file),
-      name: file.name,
-      length: file.size,
-      lastModified: DateTime.fromMillisecondsSinceEpoch(
-        file.lastModified ?? DateTime.now().millisecondsSinceEpoch,
-      ),
-      mimeType: file.type,
-    );
+XFile _convertFileToXFile(web.File file) => XFile(
+  web.URL.createObjectURL(file),
+  name: file.name,
+  length: file.size,
+  lastModified: DateTime.fromMillisecondsSinceEpoch(file.lastModified),
+  mimeType: file.type,
+);
 
-//@class
 @JS('FileSystemDirectoryHandle')
-abstract class _FileSystemDirectoryHandle extends _FileSystemHandle {
-  external _Promise<_FileSystemFileHandle> getFileHandle(
+extension type _FileSystemDirectoryHandle._(JSObject _)
+    implements _FileSystemHandle {
+  external JSPromise<_FileSystemFileHandle> getFileHandle(
     String name, [
     _FileSystemGetFileOptions? options,
   ]);
-  external _Promise<_FileSystemDirectoryHandle> getDirectoryHandle(
+  external JSPromise<_FileSystemDirectoryHandle> getDirectoryHandle(
     String name, [
     _FileSystemGetDirectoryOptions? options,
   ]);
-  external _Promise<void> removeEntry(
+  external JSPromise<JSAny?> removeEntry(
     String name, [
     _FileSystemRemoveOptions? options,
   ]);
-  external _Promise<List<String>?> resolve(FileSystemHandle possibleDescendant);
-
-  // external dynamic keys();
-  external _Iterator<_Promise<_IteratorValue<_FileSystemHandle>>> values();
-  // external _Iterator<_Promise<_IteratorValue<List>>> entries();
-
-  // AsyncIterableIterator<string> keys();
-  // AsyncIterableIterator<FileSystemHandle> values();
-  // AsyncIterableIterator<[string, FileSystemHandle]> entries();
-  // [Symbol.asyncIterator]: FileSystemDirectoryHandle['entries'];
+  external JSPromise<JSArray<JSString>?> resolve(
+    _FileSystemHandle possibleDescendant,
+  );
+  external _Iterator<JSPromise<_IteratorValue<_FileSystemHandle>>> values();
 }
 
 class StorageManagerJS implements StorageManager {
-  final html.StorageManager inner;
+  final web.StorageManager inner;
 
   StorageManagerJS(this.inner);
 
   @override
-  Future<bool> persisted() => inner.persisted();
+  Future<bool> persisted() async {
+    final result = await inner.persisted().toDart;
+    return result.toDart;
+  }
 
   @override
-  Future<bool> persist() => inner.persist();
+  Future<bool> persist() async {
+    final result = await inner.persist().toDart;
+    return result.toDart;
+  }
 
   @override
-  Future<StorageEstimate> estimate() => inner.estimate().then((value) {
-        return _StorageEstimate(
-          quota: value!['quota'] as int,
-          usage: value['usage'] as int,
-          usageDetails: (value['usageDetails'] as Map?)?.cast() ?? {},
-        );
-      });
+  Future<StorageEstimate> estimate() async {
+    final jsEstimate = await inner.estimate().toDart;
+    return _StorageEstimate(
+      quota: jsEstimate.quota,
+      usage: jsEstimate.usage,
+      usageDetails: const {},
+    );
+  }
 
   @override
-  Future<FileSystemDirectoryHandle> getDirectory() =>
-      _ptf(_navigatorStorageGetDirectory())
-          .then(_FileSystemDirectoryHandleJS.new);
+  Future<FileSystemDirectoryHandle> getDirectory() async {
+    final value = await _navigatorStorageGetDirectory().toDart;
+    return _FileSystemDirectoryHandleJS(value);
+  }
 }
 
 class _StorageEstimate implements StorageEstimate {
@@ -503,8 +407,9 @@ GetHandleError _mapGetHandleError(
   StackTrace stack,
 ) {
   GetHandleErrorType type = GetHandleErrorType.TypeError;
-  if (error is html.DomException) {
-    type = GetHandleError.typeFromString(error.name) ?? type;
+  if (error is JSObject && error.isA<web.DOMException>()) {
+    type =
+        GetHandleError.typeFromString((error as web.DOMException).name) ?? type;
   }
 
   return GetHandleError(
@@ -523,8 +428,10 @@ RemoveEntryError _mapRemoveEntryError(
   StackTrace stack,
 ) {
   RemoveEntryErrorType type = RemoveEntryErrorType.TypeError;
-  if (error is html.DomException) {
-    type = RemoveEntryError.typeFromString(error.name) ?? type;
+  if (error is JSObject && error.isA<web.DOMException>()) {
+    type =
+        RemoveEntryError.typeFromString((error as web.DOMException).name) ??
+        type;
   }
 
   return RemoveEntryError(
@@ -547,12 +454,9 @@ class _FileSystemDirectoryHandleJS extends _FileSystemHandleJS
     bool? create,
   }) async {
     try {
-      final value = await _ptf(
-        _inner.getFileHandle(
-          name,
-          _FileSystemGetFileOptions(create: create),
-        ),
-      );
+      final value = await _inner
+          .getFileHandle(name, _FileSystemGetFileOptions(create: create))
+          .toDart;
       return Ok(_FileSystemFileHandleJS(value));
     } catch (error, stack) {
       return Err(_mapGetHandleError(this, name, error, stack));
@@ -565,12 +469,12 @@ class _FileSystemDirectoryHandleJS extends _FileSystemHandleJS
     bool? create,
   }) async {
     try {
-      final value = await _ptf(
-        _inner.getDirectoryHandle(
-          name,
-          _FileSystemGetDirectoryOptions(create: create),
-        ),
-      );
+      final value = await _inner
+          .getDirectoryHandle(
+            name,
+            _FileSystemGetDirectoryOptions(create: create),
+          )
+          .toDart;
       return Ok(_FileSystemDirectoryHandleJS(value));
     } catch (error, stack) {
       return Err(_mapGetHandleError(this, name, error, stack));
@@ -591,7 +495,7 @@ class _FileSystemDirectoryHandleJS extends _FileSystemHandleJS
       }
       inLoop = true;
       while (!controller.isClosed && listening > 0) {
-        final entry = await _ptf(entriesIterator.next());
+        final entry = await entriesIterator.next().toDart;
         final handle = entry.value;
         if (handle != null) {
           final _entry = _FileSystemHandleJS.fromInner(handle);
@@ -629,20 +533,24 @@ class _FileSystemDirectoryHandleJS extends _FileSystemHandleJS
     String name, {
     bool? recursive,
   }) {
-    return _ptf(
-      _inner.removeEntry(name, _FileSystemRemoveOptions(recursive: recursive)),
-    )
-        .then<Result<void, RemoveEntryError>>((value) => Ok(value))
+    return _inner
+        .removeEntry(name, _FileSystemRemoveOptions(recursive: recursive))
+        .toDart
+        .then<Result<void, RemoveEntryError>>((value) => const Ok(null))
         .catchError((Object error, StackTrace stack) {
-      return Err<void, RemoveEntryError>(
-        _mapRemoveEntryError(this, name, error, stack),
-      );
-    });
+          return Err<void, RemoveEntryError>(
+            _mapRemoveEntryError(this, name, error, stack),
+          );
+        });
   }
 
   @override
-  Future<List<String>?> resolve(FileSystemHandle possibleDescendant) =>
-      _pltfNull(_inner.resolve(possibleDescendant));
+  Future<List<String>?> resolve(FileSystemHandle possibleDescendant) async {
+    final result = await _inner
+        .resolve((possibleDescendant as _FileSystemHandleJS).inner)
+        .toDart;
+    return result?.toDart.map((e) => e.toDart).toList();
+  }
 }
 
 // @JS()
@@ -660,54 +568,56 @@ class _FileSystemDirectoryHandleJS extends _FileSystemHandleJS
 // }
 
 @JS('showOpenFilePicker')
-external _Promise<List<_FileSystemFileHandle>> _showOpenFilePicker([
+external JSPromise<JSArray<_FileSystemFileHandle>> _showOpenFilePicker([
   _OpenFilePickerOptions? options,
 ]);
 
 @JS('showSaveFilePicker')
-external _Promise<_FileSystemFileHandle> _showSaveFilePicker([
+external JSPromise<_FileSystemFileHandle> _showSaveFilePicker([
   _SaveFilePickerOptions? options,
 ]);
 
 @JS('showDirectoryPicker')
-external _Promise<_FileSystemDirectoryHandle> _showDirectoryPicker([
+external JSPromise<_FileSystemDirectoryHandle> _showDirectoryPicker([
   _DirectoryPickerOptions? options,
 ]);
 
 @JS('getFileSystemAccessFilePersistence')
-external _Promise<_FileSystemPersistence> _getFileSystemAccessFilePersistence([
+external JSPromise<_FileSystemPersistence> _getFileSystemAccessFilePersistence([
   _FileSystemPersistenceParams? params,
 ]);
 
 @JS('navigator.storage.getDirectory')
-external _Promise<_FileSystemDirectoryHandle> _navigatorStorageGetDirectory();
+external JSPromise<_FileSystemDirectoryHandle> _navigatorStorageGetDirectory();
 
-@JS()
-@anonymous
-abstract class _FileSystemPersistenceParams {
-  external factory _FileSystemPersistenceParams({
+extension type _FileSystemPersistenceParams._(JSObject _) implements JSObject {
+  external _FileSystemPersistenceParams({
     String? databaseName,
     String? objectStoreName,
   });
 }
 
-@JS()
-@anonymous
-abstract class _FileSystemPersistence {
+extension type _FileSystemPersistence._(JSObject _) implements JSObject {
   external _FileSystemPersistenceItem? get(int id);
-  external List<_FileSystemPersistenceItem> getAll();
-  external _Promise<_FileSystemPersistenceItem?> delete(int id);
-  external _Promise<_FileSystemPersistenceItem> put(Object handle);
-  // external Map<int, _FileSystemPersistenceItem> get allMap;
-  external List<int> keys();
+  external JSArray<_FileSystemPersistenceItem> getAll();
+  external JSPromise<_FileSystemPersistenceItem?> delete(int id);
+  external JSPromise<_FileSystemPersistenceItem> put(JSAny? handle);
+  external JSArray<JSNumber> keys();
 }
 
-@JS()
-@anonymous
-abstract class _FileSystemPersistenceItem {
+@JS('Date')
+extension type JSDate._(JSObject _) implements JSObject {
+  external JSDate(int year, int month, int day);
+
+  /// Milliseconds for this date since the epoch
+  external int getTime();
+  external String toISOString();
+}
+
+extension type _FileSystemPersistenceItem._(JSObject _) implements JSObject {
   external int get id;
-  external Object get value;
-  external DateTime get savedDate;
+  external JSObject? get value;
+  external JSDate get savedDate;
 }
 
 class _FileSystemPersistenceJS implements FileSystemPersistence {
@@ -723,37 +633,38 @@ class _FileSystemPersistenceJS implements FileSystemPersistence {
 
   @override
   List<_FileSystemPersistenceItemJS> getAll() =>
-      inner.getAll().map((e) => _FileSystemPersistenceItemJS(e)).toList();
+      inner.getAll().toDart.map(_FileSystemPersistenceItemJS.new).toList();
 
   @override
   Future<_FileSystemPersistenceItemJS?> delete(int id) =>
-      _ptf(inner.delete(id)).then((value) {
+      inner.delete(id).toDart.then((value) {
         return value == null ? null : _FileSystemPersistenceItemJS(value);
       });
 
   @override
-  Future<_FileSystemPersistenceItemJS> put(FileSystemHandle handle) =>
-      _ptf(inner.put((handle as _FileSystemHandleJS).inner))
-          .then(_FileSystemPersistenceItemJS.new);
+  Future<_FileSystemPersistenceItemJS> put(FileSystemHandle handle) => inner
+      .put((handle as _FileSystemHandleJS).inner)
+      .toDart
+      .then((value) => _FileSystemPersistenceItemJS(value));
 
   @override
   Future<_FileSystemPersistenceItemJS> putFile(XFile file) async {
     final array = await file.readAsBytes();
-    final _file = html.File(
-      [array.buffer],
+    final _file = web.File(
+      [array.buffer.toJS].toJS,
       file.name,
-      <String, Object?>{
-        'lastModified': (await file.lastModified()).millisecondsSinceEpoch,
-        'type': file.mimeType,
-      },
+      web.FilePropertyBag(
+        lastModified: (await file.lastModified()).millisecondsSinceEpoch,
+        type: file.mimeType ?? '',
+      ),
     );
-    return _ptf(inner.put(_file)).then(_FileSystemPersistenceItemJS.new);
+    return inner.put(_file).toDart.then(_FileSystemPersistenceItemJS.new);
   }
 
   // Map<int, _FileSystemPersistenceItemJS> get allMap => inner.allMap
   //   .map((key, value) => MapEntry(key, _FileSystemPersistenceItemJS(value)));
 
-  List<int> keys() => inner.keys();
+  List<int> keys() => inner.keys().toDart.map((e) => e.toDartInt).toList();
 }
 
 class _FileSystemPersistenceItemJS with FileSystemPersistenceItem {
@@ -764,19 +675,25 @@ class _FileSystemPersistenceItemJS with FileSystemPersistenceItem {
   @override
   int get id => inner.id;
 
-  bool get isHandle => !hasProperty(inner.value, 'digestSha1Hex');
+  bool get isHandle {
+    final value = inner.value;
+    if (value == null) return false;
+    return !value.has('digestSha1Hex');
+  }
 
   @override
   late final FileSystemHandle? handle = isHandle
-      ? _FileSystemHandleJS.fromInner(inner.value as _FileSystemHandle)
+      ? _FileSystemHandleJS.fromInner(_FileSystemHandle._(inner.value!))
       : null;
 
   @override
-  late final PersistedFile? persistedFile =
-      isHandle ? null : _savedFileFromValue(inner.value);
+  late final PersistedFile? persistedFile = isHandle
+      ? null
+      : _savedFileFromValue(inner.value!);
 
   @override
-  DateTime get savedDate => inner.savedDate;
+  DateTime get savedDate =>
+      DateTime.fromMillisecondsSinceEpoch(inner.savedDate.getTime());
 
   @override
   String toString() {
@@ -786,24 +703,18 @@ class _FileSystemPersistenceItemJS with FileSystemPersistenceItem {
   }
 }
 
-PersistedFile _savedFileFromValue(Object value) {
-  final jsObject = value.toJSBox;
+PersistedFile _savedFileFromValue(JSObject jsObject) {
   return PersistedFile(
-    name: jsObject['name']! as String,
-    mimeType: jsObject['type']! as String,
+    name: (jsObject['name']! as JSString).toDart,
+    mimeType: (jsObject['type']! as JSString).toDart,
     lastModified: DateTime.fromMillisecondsSinceEpoch(
-      jsObject['lastModified']! as int,
+      (jsObject['lastModified']! as JSNumber).toDartInt,
     ),
-    arrayBuffer: jsObject['arrayBuffer']! as ByteBuffer,
-    digestSha1Hex: jsObject['digestSha1Hex']! as String,
-    webkitRelativePath: jsObject['webkitRelativePath'] as String?,
+    arrayBuffer: (jsObject['arrayBuffer']! as JSArrayBuffer).toDart,
+    digestSha1Hex: (jsObject['digestSha1Hex']! as JSString).toDart,
+    webkitRelativePath: (jsObject['webkitRelativePath'] as JSString?)?.toDart,
   );
 }
-
-// TODO: implement proper new JS interop
-// extension type CustomEvent(JSObject o) implements web.DragEvent {
-//   // declare whatever custom properties here
-// }
 
 class FileSystem extends FileSystemI {
   const FileSystem._();
@@ -811,7 +722,7 @@ class FileSystem extends FileSystemI {
   static const FileSystem instance = FileSystem._();
 
   @override
-  bool get isSupported => hasProperty(html.window, 'showOpenFilePicker');
+  bool get isSupported => web.window.has('showOpenFilePicker');
 
   // @override
   // Future<String?> readFileAsText(dynamic file) {
@@ -884,33 +795,32 @@ class FileSystem extends FileSystemI {
         final completer = Completer<FileSystemItemWebSafe>();
         final h = handle as FileSystemDirectoryHandle?;
         dir.createReader().readEntries(
-              ((js.JSArray<web.FileSystemEntry> entries) {
-                Future.wait(
-                  entries.toDart.map(
-                    (e) async {
-                      FileSystemHandle? entryHandle;
-                      if (h != null) {
-                        final handle = await (e.isDirectory
-                            ? h.getDirectoryHandle(e.name)
-                            : h.getFileHandle(e.name));
-                        entryHandle = handle.okOrNull;
-                      }
-                      return handleFileSystemEntry(e, entryHandle);
-                    },
-                  ).toList(),
-                ).then((children) {
-                  completer.complete(
-                    FileSystemDirectoryWebSafe(
-                      children:
-                          children.whereType<FileSystemItemWebSafe>().toList(),
-                      name: dir.name,
-                      path: dir.fullPath,
-                      handle: h,
-                    ),
-                  );
-                });
-              }).toJS,
-            );
+          ((JSArray<web.FileSystemEntry> entries) {
+            Future.wait(
+              entries.toDart.map((e) async {
+                FileSystemHandle? entryHandle;
+                if (h != null) {
+                  final handle = await (e.isDirectory
+                      ? h.getDirectoryHandle(e.name)
+                      : h.getFileHandle(e.name));
+                  entryHandle = handle.okOrNull;
+                }
+                return handleFileSystemEntry(e, entryHandle);
+              }).toList(),
+            ).then((children) {
+              completer.complete(
+                FileSystemDirectoryWebSafe(
+                  children: children
+                      .whereType<FileSystemItemWebSafe>()
+                      .toList(),
+                  name: dir.name,
+                  path: dir.fullPath,
+                  handle: h,
+                ),
+              );
+            });
+          }).toJS,
+        );
 
         return completer.future;
       } else if (entry.isFile) {
@@ -924,8 +834,9 @@ class FileSystem extends FileSystemI {
                 mimeType: file.type,
                 name: file.name,
                 length: file.size,
-                lastModified:
-                    DateTime.fromMillisecondsSinceEpoch(file.lastModified),
+                lastModified: DateTime.fromMillisecondsSinceEpoch(
+                  file.lastModified,
+                ),
                 path: f.fullPath,
               );
               completer.complete(
@@ -955,12 +866,13 @@ class FileSystem extends FileSystemI {
           final item = items[i];
           final entry = item.webkitGetAsEntry()!;
           final handlePromise = FileSystem.instance.isSupported
-              ? callMethod(item, 'getAsFileSystemHandle', [])
+              ? item.callMethod('getAsFileSystemHandle'.toJS)
               : null;
           FileSystemHandle? handle;
           if (handlePromise != null) {
             final jsHandle =
-                (await _ptf(handlePromise as _Promise))! as _FileSystemHandle;
+                (await (handlePromise as JSPromise<JSAny?>).toDart)!
+                    as _FileSystemHandle;
             handle = _FileSystemHandleJS.fromInner(jsHandle);
           }
           return handleFileSystemEntry(entry, handle);
@@ -992,45 +904,43 @@ class FileSystem extends FileSystemI {
       _OpenFilePickerOptions(
         multiple: options.multiple,
         excludeAcceptAllOption: options.excludeAcceptAllOption,
-        types: _mapFilePickerTypes(options.types),
-        id: options.id ?? _undefinedValue,
+        types: _mapFilePickerTypes(options.types).toJS,
+        id: options.id?.toJS ?? _undefinedValue,
         startIn: _startInArg(options.startIn),
       ),
     );
-    return _pltf(_promise)
+    return _promise.toDart
         .then<List<FileSystemFileHandle>>(
-      (value) => value.map((e) => _FileSystemFileHandleJS(e)).toList(),
-    ) // TODO: distinguish AbortError from others (for example, unsupported)
+          (value) => value.toDart.map(_FileSystemFileHandleJS.new).toList(),
+        ) // TODO: distinguish AbortError from others (for example, unsupported)
         .onError((Object error, StackTrace _) {
-      if (error is html.DomException && html.DomException.ABORT == error.name) {
-        return <FileSystemFileHandle>[];
-      }
-      throw error;
-    });
+          if (error is JSObject &&
+              error.isA<web.DOMException>() &&
+              (error as web.DOMException).code == web.DOMException.ABORT_ERR) {
+            return <FileSystemFileHandle>[];
+          }
+          throw error;
+        });
   }
 
   @override
   Future<FileSystemFileHandle?> showSaveFilePicker([
     FsSaveOptions options = const FsSaveOptions(),
   ]) =>
-      _ptf(
-        _showSaveFilePicker(
-          _SaveFilePickerOptions(
-            excludeAcceptAllOption: options.excludeAcceptAllOption,
-            types: _mapFilePickerTypes(options.types),
-            suggestedName: options.suggestedName,
-            id: options.id ?? _undefinedValue,
-            startIn: _startInArg(options.startIn),
-          ),
+      _showSaveFilePicker(
+        _SaveFilePickerOptions(
+          excludeAcceptAllOption: options.excludeAcceptAllOption,
+          types: _mapFilePickerTypes(options.types).toJS,
+          suggestedName: options.suggestedName,
+          id: options.id?.toJS ?? _undefinedValue,
+          startIn: _startInArg(options.startIn),
         ),
-      )
-          .then<FileSystemFileHandle?>(
-        (value) => _FileSystemFileHandleJS(value),
-      )
-          // TODO: distinguish AbortError from others (for example, unsupported)
-          .onError((Object error, _) {
-        if (error is html.DomException &&
-            html.DomException.ABORT == error.name) {
+      ).toDart.then<FileSystemFileHandle?>(_FileSystemFileHandleJS.new)
+      // TODO: distinguish AbortError from others (for example, unsupported)
+      .onError((Object error, _) {
+        if (error is JSObject &&
+            error.isA<web.DOMException>() &&
+            (error as web.DOMException).code == web.DOMException.ABORT_ERR) {
           return null;
         }
         throw error;
@@ -1040,26 +950,24 @@ class FileSystem extends FileSystemI {
   Future<FileSystemDirectoryHandle?> showDirectoryPicker([
     FsDirectoryOptions options = const FsDirectoryOptions(),
   ]) =>
-      _ptf(
-        _showDirectoryPicker(
-          _DirectoryPickerOptions(
-            mode: options.mode.name,
-            id: options.id ?? _undefinedValue,
-            startIn: _startInArg(options.startIn),
-          ),
-        ),
-      )
-          .then<FileSystemDirectoryHandle?>(
-        (value) => _FileSystemDirectoryHandleJS(value),
-      )
+      _showDirectoryPicker(
+            _DirectoryPickerOptions(
+              mode: options.mode.name,
+              id: options.id?.toJS ?? _undefinedValue,
+              startIn: _startInArg(options.startIn),
+            ),
+          ).toDart
+          .then<FileSystemDirectoryHandle?>(_FileSystemDirectoryHandleJS.new)
           // TODO: distinguish AbortError from others (for example, unsupported)
           .onError((Object error, _) {
-        if (error is html.DomException &&
-            html.DomException.ABORT == error.name) {
-          return null;
-        }
-        throw error;
-      });
+            if (error is JSObject &&
+                error.isA<web.DOMException>() &&
+                (error as web.DOMException).code ==
+                    web.DOMException.ABORT_ERR) {
+              return null;
+            }
+            throw error;
+          });
 
   static Future<FileSystemPersistence>? _persistence;
 
@@ -1067,19 +975,16 @@ class FileSystem extends FileSystemI {
   Future<FileSystemPersistence> getPersistence({
     String databaseName = 'FilesDB',
     String objectStoreName = 'FilesObjectStore',
-  }) =>
-      _persistence ??= _ptf(
-        _getFileSystemAccessFilePersistence(
-          _FileSystemPersistenceParams(
-            databaseName: databaseName,
-            objectStoreName: objectStoreName,
-          ),
-        ),
-      ).then((value) => _FileSystemPersistenceJS(value));
+  }) => _persistence ??= _getFileSystemAccessFilePersistence(
+    _FileSystemPersistenceParams(
+      databaseName: databaseName,
+      objectStoreName: objectStoreName,
+    ),
+  ).toDart.then(_FileSystemPersistenceJS.new);
 
   @override
   StorageManager get storageManager =>
-      StorageManagerJS(html.window.navigator.storage!);
+      StorageManagerJS(web.window.navigator.storage);
 
   @override
   FileSystemHandle? getIoNativeHandleFromPath(String path) =>
@@ -1088,10 +993,13 @@ class FileSystem extends FileSystemI {
       );
 }
 
-Object? _startInArg(FsStartsInOptions? startIn) {
-  return startIn?.path ??
-      (startIn?.handle as _FileSystemHandleJS?)?.inner ??
-      _undefinedValue;
+JSAny? _startInArg(FsStartsInOptions? startIn) {
+  if (startIn == null) return _undefinedValue;
+  if (startIn.path != null) return startIn.path!.toJS;
+  if (startIn.handle != null) {
+    return (startIn.handle! as _FileSystemHandleJS).inner;
+  }
+  return _undefinedValue;
 }
 
 ///
@@ -1104,44 +1012,9 @@ List<_FilePickerAcceptTypeJS> _mapFilePickerTypes(
   return list
       .map(
         (e) => _FilePickerAcceptTypeJS(
-          accept: jsify(e.accept) as Object,
+          accept: e.accept.jsify()!,
           description: e.description,
         ),
       )
       .toList();
-}
-
-// /// Converts a JavaScript Promise to a Dart [Future].
-// ///
-// /// ```dart
-// /// @JS()
-// /// external Promise<num> get threePromise; // Resolves to 3
-// ///
-// /// final Future<num> threeFuture = promiseToFuture(threePromise);
-// ///
-// /// final three = await threeFuture; // == 3
-// /// ```
-// Future<T> promiseToFuture<T>(_Promise<T> jsPromise) {
-//   final completer = Completer<T>();
-
-//   final success = allowInterop((r) => completer.complete(r as T?));
-//   final error = allowInterop((e) => completer.completeError(e as Object));
-
-//   jsPromise.then(success).catchFn(error);
-//   return completer.future;
-// }
-
-Future<T> _ptf<T>(_Promise<T> v) async {
-  final vm = await promiseToFuture<Object?>(v);
-  return vm as T;
-}
-
-Future<List<T>> _pltf<T>(_Promise<List<T>> v) async {
-  final vm = await promiseToFuture<Object?>(v);
-  return (vm! as List).cast();
-}
-
-Future<List<T>?> _pltfNull<T>(_Promise<List<T>?> v) async {
-  final vm = await promiseToFuture<Object?>(v);
-  return (vm as List?)?.cast();
 }

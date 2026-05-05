@@ -153,7 +153,7 @@ class _MyHomePageState extends State<MyHomePage> {
               'https://developer.mozilla.org/docs/Web/API/File_System_Access_API',
             ),
             builder: (context, launch) => TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              style: TextButton.styleFrom(foregroundColor: Colors.grey),
               onPressed: launch,
               child: const Text('Mozilla Docs'),
             ),
@@ -164,7 +164,7 @@ class _MyHomePageState extends State<MyHomePage> {
               'https://github.com/juancastillo0/file_system_access_web',
             ),
             builder: (context, launch) => TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              style: TextButton.styleFrom(foregroundColor: Colors.grey),
               onPressed: launch,
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4.0),
