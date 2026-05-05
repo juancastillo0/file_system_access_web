@@ -21,7 +21,7 @@ abstract class SerializedFileEntity {
 
   T when<T>({
     required T Function(String name, List<SerializedFileEntity> entities)
-        directory,
+    directory,
     required T Function(String name, Uint8List content) file,
   }) {
     final v = this;
@@ -87,18 +87,16 @@ abstract class SerializedFileEntity {
         return SerializedFile.fromJson(map);
       default:
         throw Exception(
-            'Invalid discriminator for SerializedFileEntity.fromJson '
-            '${map["runtimeType"]}. Input map: $map');
+          'Invalid discriminator for SerializedFileEntity.fromJson '
+          '${map["runtimeType"]}. Input map: $map',
+        );
     }
   }
 
   Map<String, Object?> toJson();
 }
 
-enum TypeSerializedFileEntity {
-  directory,
-  file,
-}
+enum TypeSerializedFileEntity { directory, file }
 
 TypeSerializedFileEntity? parseTypeSerializedFileEntity(
   String rawString, {
@@ -123,10 +121,7 @@ extension TypeSerializedFileEntityExtension on TypeSerializedFileEntity {
   bool get isSerializedDirectory => this == TypeSerializedFileEntity.directory;
   bool get isSerializedFile => this == TypeSerializedFileEntity.file;
 
-  T when<T>({
-    required T Function() directory,
-    required T Function() file,
-  }) {
+  T when<T>({required T Function() directory, required T Function() file}) {
     switch (this) {
       case TypeSerializedFileEntity.directory:
         return directory();
@@ -158,10 +153,8 @@ class SerializedDirectory extends SerializedFileEntity {
   final String name;
   final List<SerializedFileEntity> entities;
 
-  const SerializedDirectory({
-    required this.name,
-    required this.entities,
-  }) : super._();
+  const SerializedDirectory({required this.name, required this.entities})
+    : super._();
 
   static Future<SerializedDirectory> fromHandle(
     FileSystemDirectoryHandle dir,
@@ -175,10 +168,7 @@ class SerializedDirectory extends SerializedFileEntity {
       }
     }).toList();
 
-    return SerializedDirectory(
-      entities: entries,
-      name: dir.name,
-    );
+    return SerializedDirectory(entities: entries, name: dir.name);
   }
 
   @override
@@ -223,10 +213,7 @@ class SerializedFile extends SerializedFileEntity {
   final String name;
   final Uint8List content;
 
-  const SerializedFile({
-    required this.name,
-    required this.content,
-  }) : super._();
+  const SerializedFile({required this.name, required this.content}) : super._();
 
   @override
   TypeSerializedFileEntity get typeEnum => TypeSerializedFileEntity.file;
@@ -234,10 +221,7 @@ class SerializedFile extends SerializedFileEntity {
   static Future<SerializedFile> fromHandle(FileSystemFileHandle handle) async {
     final file = await handle.getFile();
     final content = await file.readAsBytes();
-    return SerializedFile(
-      content: content,
-      name: file.name,
-    );
+    return SerializedFile(content: content, name: file.name);
   }
 
   static SerializedFile fromJson(Map<String, dynamic> map) {
@@ -249,11 +233,7 @@ class SerializedFile extends SerializedFileEntity {
 
   @override
   Map<String, Object?> toJson() {
-    return {
-      'runtimeType': 'file',
-      'name': name,
-      'content': content,
-    };
+    return {'runtimeType': 'file', 'name': name, 'content': content};
   }
 
   @override

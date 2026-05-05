@@ -145,9 +145,7 @@ class FileSystemFileHandleIo extends FileSystemHandleIo
   }
 
   @override
-  Future<void> remove({
-    bool? recursive,
-  }) async {
+  Future<void> remove({bool? recursive}) async {
     await File(path).delete(recursive: recursive ?? false);
   }
 
@@ -187,9 +185,7 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
           await Directory(concatName).create(recursive: true);
           return Ok(FileSystemDirectoryHandleIo(concatName));
         } catch (error, stack) {
-          return Err(
-            _makeError(GetHandleErrorType.TypeError, error, stack),
-          );
+          return Err(_makeError(GetHandleErrorType.TypeError, error, stack));
         }
       } else {
         return Err(_makeError(GetHandleErrorType.NotFoundError));
@@ -252,9 +248,7 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
           final isEmpty = await dir.list().isEmpty;
           if (!isEmpty) {
             return Err(
-              _makeError(
-                RemoveEntryErrorType.InvalidModificationError,
-              ),
+              _makeError(RemoveEntryErrorType.InvalidModificationError),
             );
           }
         }
@@ -316,9 +310,7 @@ class FileSystemDirectoryHandleIo extends FileSystemHandleIo
   final FileSystemHandleKind kind = FileSystemHandleKind.directory;
 
   @override
-  Future<void> remove({
-    bool? recursive,
-  }) async {
+  Future<void> remove({bool? recursive}) async {
     await Directory(path).delete(recursive: recursive ?? false);
   }
 
@@ -373,8 +365,9 @@ class FileSystem extends FileSystemI {
         allowMultiple: false,
         initialDirectory: _startInArg(options.startIn),
       );
-      filePath =
-          result == null || result.count == 0 ? null : result.paths.first;
+      filePath = result == null || result.count == 0
+          ? null
+          : result.paths.first;
     } else {
       filePath = await FilePicker.platform.saveFile(
         allowedExtensions: _allowedExtensions(options.types),
@@ -391,17 +384,16 @@ class FileSystem extends FileSystemI {
   Future<FileSystemPersistence> getPersistence({
     String databaseName = 'FilesDB',
     String objectStoreName = 'FilesObjectStore',
-  }) =>
-      throw UnsupportedError(
-        '`FileSystem.getPersistence()` is only supported for WEB.'
-        ' You could save the Directory or File path in your'
-        ' selected storage method for native platforms.',
-      );
+  }) => throw UnsupportedError(
+    '`FileSystem.getPersistence()` is only supported for WEB.'
+    ' You could save the Directory or File path in your'
+    ' selected storage method for native platforms.',
+  );
 
   @override
   StorageManager get storageManager => throw UnimplementedError(
-        '`FileSystem.storageManager` is only implemented in WEB.',
-      );
+    '`FileSystem.storageManager` is only implemented in WEB.',
+  );
 
   @override
   Stream<DropFileEvent> webDropFileEvents() {
@@ -429,16 +421,13 @@ const _kIsWeb = identical(0, 0.0);
 
 Future<XFile> _xFileFromPickerFile(PlatformFile file) async {
   if (_kIsWeb) {
-    final bytes = file.bytes ??
+    final bytes =
+        file.bytes ??
         Uint8List.fromList(
           (await file.readStream!.toList()).expand((e) => e).toList(),
         );
 
-    return XFile.fromData(
-      bytes,
-      name: file.name,
-      length: bytes.lengthInBytes,
-    );
+    return XFile.fromData(bytes, name: file.name, length: bytes.lengthInBytes);
   } else {
     return XFile(
       file.path!,
@@ -466,8 +455,9 @@ FileType _fileType(List<FilePickerAcceptType>? types) {
   FileType fileType = FileType.any;
   if (types != null && types.length == 1 && types.first.accept.length == 1) {
     final key = types.first.accept.keys.first;
-    final index = FileType.values
-        .indexWhere((element) => key.startsWith('${element.name}/'));
+    final index = FileType.values.indexWhere(
+      (element) => key.startsWith('${element.name}/'),
+    );
     if (index != -1) {
       fileType = FileType.values[index];
     }

@@ -7,15 +7,11 @@ export 'package:file_system_access/src/models/write_params.dart';
 abstract class WriteChunkType {
   const WriteChunkType._();
 
-  const factory WriteChunkType.bufferSource(
-    ByteBuffer value,
-  ) = WriteChunkTypeBufferSource;
-  const factory WriteChunkType.string(
-    String value,
-  ) = WriteChunkTypeString;
-  const factory WriteChunkType.writeParams(
-    WriteParams value,
-  ) = WriteChunkTypeWriteParams;
+  const factory WriteChunkType.bufferSource(ByteBuffer value) =
+      WriteChunkTypeBufferSource;
+  const factory WriteChunkType.string(String value) = WriteChunkTypeString;
+  const factory WriteChunkType.writeParams(WriteParams value) =
+      WriteChunkTypeWriteParams;
 
   Object get value;
 
@@ -82,25 +78,19 @@ class WriteChunkTypeBufferSource extends WriteChunkType {
   @override
   final ByteBuffer value;
 
-  const WriteChunkTypeBufferSource(
-    this.value,
-  ) : super._();
+  const WriteChunkTypeBufferSource(this.value) : super._();
 }
 
 class WriteChunkTypeString extends WriteChunkType {
   @override
   final String value;
 
-  const WriteChunkTypeString(
-    this.value,
-  ) : super._();
+  const WriteChunkTypeString(this.value) : super._();
 }
 
 class WriteChunkTypeWriteParams extends WriteChunkType {
   @override
   final WriteParams value;
 
-  const WriteChunkTypeWriteParams(
-    this.value,
-  ) : super._();
+  const WriteChunkTypeWriteParams(this.value) : super._();
 }

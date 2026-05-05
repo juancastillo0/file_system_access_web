@@ -4,34 +4,20 @@ import 'package:meta/meta.dart';
 abstract class Result<OK, ERR> {
   const Result._();
 
-  const factory Result.ok(
-    OK value,
-  ) = Ok;
-  factory Result.err(
-    ERR value, {
-    StackTrace stackTrace,
-  }) = Err;
+  const factory Result.ok(OK value) = Ok;
+  factory Result.err(ERR value, {StackTrace stackTrace}) = Err;
 
   OK? get okOrNull => when(ok: (ok) => ok, err: (_) => null);
   ERR? get errOrNull => when(ok: (ok) => null, err: (err) => err);
 
-  OK unwrap() => map(
-        ok: (ok) => ok.value,
-        err: (err) => throw err,
-      );
+  OK unwrap() => map(ok: (ok) => ok.value, err: (err) => throw err);
 
   T? whenOk<T>(T Function(OK) func) {
-    return when(
-      ok: (ok) => func(ok),
-      err: (err) => null,
-    );
+    return when(ok: (ok) => func(ok), err: (err) => null);
   }
 
   T? whenErr<T>(T Function(ERR) func) {
-    return when(
-      ok: (ok) => null,
-      err: (err) => func(err),
-    );
+    return when(ok: (ok) => null, err: (err) => func(err));
   }
 
   T when<T>({
@@ -128,10 +114,7 @@ abstract class Result<OK, ERR> {
   }
 }
 
-enum TypeResult {
-  ok,
-  err,
-}
+enum TypeResult { ok, err }
 
 TypeResult? parseTypeResult(String rawString, {bool caseSensitive = true}) {
   final _rawString = caseSensitive ? rawString : rawString.toLowerCase();
@@ -153,10 +136,7 @@ extension TypeResultExtension on TypeResult {
   bool get isOk => this == TypeResult.ok;
   bool get isErr => this == TypeResult.err;
 
-  T when<T>({
-    required T Function() ok,
-    required T Function() err,
-  }) {
+  T when<T>({required T Function() ok, required T Function() err}) {
     switch (this) {
       case TypeResult.ok:
         return ok();
@@ -186,9 +166,7 @@ extension TypeResultExtension on TypeResult {
 class Ok<OK, ERR> extends Result<OK, ERR> {
   final OK value;
 
-  const Ok(
-    this.value,
-  ) : super._();
+  const Ok(this.value) : super._();
 
   @override
   TypeResult get typeEnum => TypeResult.ok;
@@ -198,11 +176,9 @@ class Err<OK, ERR> extends Result<OK, ERR> {
   final ERR error;
   final StackTrace stackTrace;
 
-  Err(
-    this.error, {
-    StackTrace? stackTrace,
-  })  : stackTrace = stackTrace ?? StackTrace.current,
-        super._();
+  Err(this.error, {StackTrace? stackTrace})
+    : stackTrace = stackTrace ?? StackTrace.current,
+      super._();
 
   @override
   TypeResult get typeEnum => TypeResult.err;

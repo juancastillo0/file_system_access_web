@@ -7,12 +7,8 @@ abstract class WriteParams {
     required WriteChunkType data,
     int? position,
   }) = WriteParamsWrite;
-  const factory WriteParams.seek({
-    required int position,
-  }) = WriteParamsSeek;
-  const factory WriteParams.truncate({
-    required int size,
-  }) = WriteParamsTruncate;
+  const factory WriteParams.seek({required int position}) = WriteParamsSeek;
+  const factory WriteParams.truncate({required int size}) = WriteParamsTruncate;
 
   T when<T>({
     required T Function(WriteChunkType data, int? position) write,
@@ -71,15 +67,15 @@ abstract class WriteParams {
     }
     throw '';
   }
-//   static WriteParams fromJson(Map<String, dynamic> map) {
-//   switch (map["runtimeType"] as String) {
-//     case '_Write': return _Write.fromJson(map);
-//     case '_Seek': return _Seek.fromJson(map);
-//     case '_Truncate': return _Truncate.fromJson(map);
-//     default:
-//       return null;
-//   }
-// }
+  //   static WriteParams fromJson(Map<String, dynamic> map) {
+  //   switch (map["runtimeType"] as String) {
+  //     case '_Write': return _Write.fromJson(map);
+  //     case '_Seek': return _Seek.fromJson(map);
+  //     case '_Truncate': return _Truncate.fromJson(map);
+  //     default:
+  //       return null;
+  //   }
+  // }
 
   Map<String, dynamic> toJson();
 }
@@ -88,10 +84,7 @@ class WriteParamsWrite extends WriteParams {
   final int? position;
   final WriteChunkType data;
 
-  const WriteParamsWrite({
-    required this.data,
-    this.position,
-  }) : super._();
+  const WriteParamsWrite({required this.data, this.position}) : super._();
 
   // static _Write fromJson(Map<String, dynamic> map) {
   //   return _Write(
@@ -102,20 +95,14 @@ class WriteParamsWrite extends WriteParams {
 
   @override
   Map<String, Object?> toJson() {
-    return {
-      'type': 'write',
-      'position': position,
-      'data': data.value,
-    };
+    return {'type': 'write', 'position': position, 'data': data.value};
   }
 }
 
 class WriteParamsSeek extends WriteParams {
   final int position;
 
-  const WriteParamsSeek({
-    required this.position,
-  }) : super._();
+  const WriteParamsSeek({required this.position}) : super._();
 
   // static _Seek fromJson(Map<String, dynamic> map) {
   //   return _Seek(
@@ -125,19 +112,14 @@ class WriteParamsSeek extends WriteParams {
 
   @override
   Map<String, Object?> toJson() {
-    return {
-      'type': 'seek',
-      'position': position,
-    };
+    return {'type': 'seek', 'position': position};
   }
 }
 
 class WriteParamsTruncate extends WriteParams {
   final int size;
 
-  const WriteParamsTruncate({
-    required this.size,
-  }) : super._();
+  const WriteParamsTruncate({required this.size}) : super._();
 
   // static _Truncate fromJson(Map<String, dynamic> map) {
   //   return _Truncate(
@@ -147,9 +129,6 @@ class WriteParamsTruncate extends WriteParams {
 
   @override
   Map<String, Object?> toJson() {
-    return {
-      'type': 'truncate',
-      'size': size,
-    };
+    return {'type': 'truncate', 'size': size};
   }
 }

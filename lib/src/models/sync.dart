@@ -126,10 +126,7 @@ class DirectorySynchronizer {
   bool isSynchedWithLocal() {
     final toSave = getSerializedEntities().asDirectoryMap();
     final saved = savedEntities();
-    return mapEquals(
-      saved,
-      toSave,
-    );
+    return mapEquals(saved, toSave);
   }
 
   Future<bool> isSynchedWithFileSystem() async {
@@ -138,10 +135,7 @@ class DirectorySynchronizer {
     }
     final serDir = await SerializedDirectory.fromHandle(directoryHandle!);
     final saved = savedEntities();
-    return mapEquals(
-      saved,
-      serDir.entities.asDirectoryMap(),
-    );
+    return mapEquals(saved, serDir.entities.asDirectoryMap());
   }
 
   Future<void> dispose() {
@@ -150,9 +144,7 @@ class DirectorySynchronizer {
   }
 
   /// Returns false if FileSystemPermissionMode.readwrite is not granted
-  Future<bool> selectDirectory(
-    FileSystemDirectoryHandle directory,
-  ) async {
+  Future<bool> selectDirectory(FileSystemDirectoryHandle directory) async {
     final success = await FileSystem.instance.verifyPermission(
       directory,
       mode: FileSystemPermissionMode.readwrite,
@@ -176,9 +168,7 @@ class DirectorySynchronizer {
 
   Future<DirectorySyncResult>? _syncFuture;
 
-  Future<DirectorySyncResult> saveEntities({
-    bool forceUpdate = false,
-  }) async {
+  Future<DirectorySyncResult> saveEntities({bool forceUpdate = false}) async {
     if (_syncFuture != null) {
       return _syncFuture!;
     }
@@ -289,15 +279,9 @@ Future<DirectorySyncResult> _saveDirectoryEntities(
 
         return file.when(
           ok: (file) {
-            final _savedEntity = SavedEntity(
-              value: entity,
-              handle: file,
-            );
+            final _savedEntity = SavedEntity(value: entity, handle: file);
             savedFiles[entry.key] = _savedEntity;
-            return SavedEntityResult(
-              wasCached: false,
-              entity: _savedEntity,
-            );
+            return SavedEntityResult(wasCached: false, entity: _savedEntity);
           },
           err: (err) => SavedEntityResult.fromError(err),
         );
@@ -309,16 +293,16 @@ Future<DirectorySyncResult> _saveDirectoryEntities(
   final _futsDelete = [...savedFiles.entries]
       .where((element) => !toSave.containsKey(element.key))
       .map((e) async {
-    final fileHandle = e.value.handle;
-    final result = await directory.removeEntry(
-      fileHandle.name,
-      recursive: true,
-    );
-    if (result.isOk) {
-      savedFiles.remove(e.key);
-    }
-    return result;
-  });
+        final fileHandle = e.value.handle;
+        final result = await directory.removeEntry(
+          fileHandle.name,
+          recursive: true,
+        );
+        if (result.isOk) {
+          savedFiles.remove(e.key);
+        }
+        return result;
+      });
   final deleteErrors = (await Future.wait(_futsDelete))
       .whereType<Err<void, RemoveEntryError>>()
       .where((e) => e.error.type != RemoveEntryErrorType.NotFoundError)
@@ -342,20 +326,12 @@ class SavedEntity {
   final Map<String, SavedEntity>? childEntities;
   final timestamp = DateTime.now();
 
-  SavedEntity({
-    required this.value,
-    required this.handle,
-    this.childEntities,
-  });
+  SavedEntity({required this.value, required this.handle, this.childEntities});
 }
 
 extension EntitiesMap on List<SerializedFileEntity> {
   Map<String, SerializedFileEntity> asDirectoryMap() {
-    return Map.fromEntries(
-      map(
-        (e) => MapEntry(e.name, e),
-      ),
-    );
+    return Map.fromEntries(map((e) => MapEntry(e.name, e)));
   }
 }
 
@@ -375,7 +351,7 @@ class SavedEntityResult {
   });
 
   const SavedEntityResult.fromError(this.error)
-      : this.entity = null,
-        this.wasCached = false,
-        this.directoryResult = null;
+    : this.entity = null,
+      this.wasCached = false,
+      this.directoryResult = null;
 }

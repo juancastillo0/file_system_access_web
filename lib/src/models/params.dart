@@ -35,13 +35,9 @@ class FsStartsInOptions {
   final String? path;
   final FileSystemHandle? handle;
 
-  const FsStartsInOptions.path(
-    String this.path,
-  ) : handle = null;
+  const FsStartsInOptions.path(String this.path) : handle = null;
 
-  const FsStartsInOptions.handle(
-    FileSystemHandle this.handle,
-  ) : path = null;
+  const FsStartsInOptions.handle(FileSystemHandle this.handle) : path = null;
 
   @override
   String toString() {

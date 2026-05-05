@@ -29,17 +29,13 @@ abstract class FileSystemHandle {
 
   String get name;
 
-  Future<PermissionStateEnum> queryPermission({
-    FileSystemPermissionMode? mode,
-  });
+  Future<PermissionStateEnum> queryPermission({FileSystemPermissionMode? mode});
 
   Future<PermissionStateEnum> requestPermission({
     FileSystemPermissionMode? mode,
   });
 
-  Future<void> remove({
-    bool? recursive,
-  });
+  Future<void> remove({bool? recursive});
 }
 
 /// https://developer.mozilla.org/docs/Web/API/window/showOpenFilePicker
@@ -56,13 +52,10 @@ abstract class FileSystemHandle {
 class FilePickerAcceptType {
   const FilePickerAcceptType({this.description, required this.accept});
   final String? description;
-  final Map<String, List<String> /*String | String[]*/ > accept;
+  final Map<String, List<String> /*String | String[]*/> accept;
 }
 
-enum FileSystemPermissionMode {
-  read,
-  readwrite,
-}
+enum FileSystemPermissionMode { read, readwrite }
 
 enum FileSystemHandleKind { file, directory }
 
@@ -107,9 +100,7 @@ abstract class FileSystemDirectoryHandle extends FileSystemHandle {
   /// throws NotAllowedError if FileSystemPermissionMode.read is not granted
   Stream<FileSystemHandle> entries();
 
-  Future<List<String>?> resolve(
-    FileSystemHandle possibleDescendant,
-  );
+  Future<List<String>?> resolve(FileSystemHandle possibleDescendant);
 }
 
 extension FileSystemDirectoryHandleExt on FileSystemDirectoryHandle {
@@ -120,14 +111,14 @@ extension FileSystemDirectoryHandleExt on FileSystemDirectoryHandle {
   }
 
   Future<Result<FileSystemDirectoryHandle, BaseFileError>>
-      getOrReplaceDirectoryHandle(String name) {
+  getOrReplaceDirectoryHandle(String name) {
     return _getOrReplaceEntityHandle(name, getDirectoryHandle);
   }
 
   Future<Result<T, BaseFileError>> _getOrReplaceEntityHandle<T>(
     String name,
     Future<Result<T, GetHandleError>> Function(String name, {bool? create})
-        getHandle,
+    getHandle,
   ) async {
     final result = await getHandle(name, create: true);
     return result.map(
@@ -189,9 +180,7 @@ abstract class FileSystemI {
   Future<FileSystemFileHandle?> showOpenSingleFilePicker([
     FsOpenOptions options = const FsOpenOptions(),
   ]) async {
-    final files = await showOpenFilePicker(
-      options.copyWith(multiple: false),
-    );
+    final files = await showOpenFilePicker(options.copyWith(multiple: false));
     return files.isEmpty ? null : files[0];
   }
 
@@ -259,10 +248,8 @@ abstract class FileSystemI {
       final selection = await showOpenFilePicker(options);
       return Future.wait(
         selection.map(
-          (e) async => FileSystemFileWebSafe(
-            file: await e.getFile(),
-            handle: e,
-          ),
+          (e) async =>
+              FileSystemFileWebSafe(file: await e.getFile(), handle: e),
         ),
       );
     }
@@ -317,12 +304,7 @@ class DropFileEvent {
   });
 }
 
-enum DropFileEventType {
-  dragEnter,
-  dragOver,
-  dragLeave,
-  drop,
-}
+enum DropFileEventType { dragEnter, dragOver, dragLeave, drop }
 
 abstract class FileSystemPersistence {
   FileSystemPersistenceItem? get(int id);
@@ -405,10 +387,7 @@ class FileSystemFileWebSafe extends FileSystemItemWebSafe {
   final FileSystemFileHandle? handle;
   final file_selector.XFile file;
 
-  FileSystemFileWebSafe({
-    this.handle,
-    required this.file,
-  }) : super._();
+  FileSystemFileWebSafe({this.handle, required this.file}) : super._();
 
   @override
   T map<T>({

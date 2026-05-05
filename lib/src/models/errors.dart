@@ -3,10 +3,7 @@
 import 'package:file_system_access/file_system_access.dart';
 import 'package:file_system_access/src/utils.dart';
 
-enum BaseFileErrorType {
-  NotAllowedError,
-  TypeError,
-}
+enum BaseFileErrorType { NotAllowedError, TypeError }
 
 class BaseFileError {
   final BaseFileErrorType type;
@@ -93,7 +90,8 @@ class GetHandleError {
     GetHandleErrorType type, [
     Object? error,
     StackTrace? stack,
-  ]) errorMaker(FileSystemDirectoryHandle handle, String name) {
+  ])
+  errorMaker(FileSystemDirectoryHandle handle, String name) {
     GetHandleError _makeError(
       GetHandleErrorType type, [
       Object? error,
@@ -149,7 +147,8 @@ class RemoveEntryError {
     RemoveEntryErrorType type, [
     Object? error,
     StackTrace? stack,
-  ]) errorMaker(FileSystemDirectoryHandle handle, String name) {
+  ])
+  errorMaker(FileSystemDirectoryHandle handle, String name) {
     RemoveEntryError _makeError(
       RemoveEntryErrorType type, [
       Object? error,
